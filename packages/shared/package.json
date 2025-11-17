@@ -1,0 +1,11 @@
+{
+    "name": "@assetdexter/shared",
+    "version": "1.0.0",
+    "types": "index.ts",
+    "scripts": {
+      "build": "tsc"
+    },
+    "devDependencies": {
+      "typescript": "^5.0.0"
+    }
+}
