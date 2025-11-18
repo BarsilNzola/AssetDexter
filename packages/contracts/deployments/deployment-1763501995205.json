@@ -1,0 +1,8 @@
+{
+  "network": "lineaSepolia",
+  "timestamp": "2025-11-18T21:39:55.131Z",
+  "contracts": {
+    "RWADiscoveryCard": "0x6c49D2b8d7B200777F819d3aC5cb740D68b5E4fA",
+    "AssetDexterFactory": "0x9A0E3e7960e3439F897015772e6EcaE7B632Ad9f"
+  }
+}

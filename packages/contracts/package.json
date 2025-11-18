@@ -6,8 +6,8 @@
     "compile": "hardhat compile",
     "test": "hardhat test",
     "deploy:local": "hardhat run scripts/deploy.ts --network localhost",
-    "deploy:base": "hardhat run scripts/deploy.ts --network base",
-    "deploy:testnet": "hardhat run scripts/deploy.ts --network baseSepolia",
+    "deploy:linea": "hardhat run scripts/deploy.ts --network lineaSepolia",
+    "deploy:base": "hardhat run scripts/deploy.ts --network baseSepolia",
     "chain": "hardhat node",
     "verify": "hardhat verify"
   },

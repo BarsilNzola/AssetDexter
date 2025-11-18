@@ -17,13 +17,13 @@ const config: HardhatUserConfig = {
     },
   },
   networks: {
-    // Base Mainnet
-    base: {
-      url: "https://mainnet.base.org",
+    // Linea Sepolia Testnet
+    lineaSepolia: {
+      url: "https://linea-sepolia-rpc.publicnode.com",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      chainId: 8453,
+      chainId: 59141,
     },
-    // Base Sepolia Testnet (current testnet)
+    // Base Sepolia (keeping as backup)
     baseSepolia: {
       url: "https://sepolia.base.org",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
@@ -37,19 +37,8 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: {
-      base: process.env.BASESCAN_API_KEY || "",
-      baseSepolia: process.env.BASESCAN_API_KEY || "",
+      lineaSepolia: process.env.LINEASCAN_API_KEY || "",
     },
-    customChains: [
-      {
-        network: "baseSepolia",
-        chainId: 84532,
-        urls: {
-          apiURL: "https://api-sepolia.basescan.org/api",
-          browserURL: "https://sepolia.basescan.org"
-        }
-      }
-    ]
   },
   sourcify: {
     enabled: true
