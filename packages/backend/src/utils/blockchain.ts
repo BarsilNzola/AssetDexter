@@ -1,6 +1,8 @@
 import { ethers } from 'ethers';
 import { GoldRushClient, ChainName } from "@covalenthq/client-sdk";
 import { config } from './config';
+import dotenv from 'dotenv';
+dotenv.config();
 
 export class BlockchainService {
   private providers: Map<number, ethers.JsonRpcProvider> = new Map();

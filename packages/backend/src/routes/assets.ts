@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { DeFiLlamaService } from '../services/data-ingestion/defi-llama';
 import { CreatorBidService } from '../services/data-ingestion/creatorbid';
 import { SimpleCache } from '../services/cache/simple-cache';
-import { RWA } from '../types/rwa';
+import { RWA } from '../../../shared/src/types/rwa';
 import { AssetType } from '../types/contracts';
 
 const router = Router();

@@ -5,7 +5,7 @@ import { RarityScorer } from '../services/ai-models/rarity-scorer';
 import { RiskAssessor } from '../services/ai-models/risk-assessor';
 import { MarketPredictor } from '../services/ai-models/market-predictor';
 import { SimpleCache } from '../services/cache/simple-cache';
-import { RWA, RWAAnalysis } from '../types/rwa';
+import { RWA, RWAAnalysis } from '../../../shared/src/types/rwa';
 import { AssetType, RarityTier, RiskTier } from '../types/contracts';
 
 const router = Router();
@@ -77,92 +77,6 @@ function mapRiskTier(tier: string): RiskTier {
     'Speculative': RiskTier.SPECULATIVE
   };
   return tierMap[tier] || RiskTier.MEDIUM;
-}
-
-async function performAnalysis(contractAddress: string, chainId: number): Promise<RWAAnalysis> {
-  // Fetch data from multiple sources
-  const [onChainData, defiData] = await Promise.all([
-    onChainService.fetchTokenData(contractAddress, chainId),
-    defiLlamaService.fetchRWAPools()
-  ]);
-
-  const chainName = getChainName(chainId);
-  const assetData = defiData.find(pool => 
-    pool.chain === chainName && 
-    pool.symbol?.toLowerCase().includes(onChainData.symbol?.toLowerCase() || '')
-  );
-
-  // Determine asset type based on characteristics
-  let assetType = AssetType.TOKENIZED_TREASURY;
-  if (onChainData.symbol?.toLowerCase().includes('art') || onChainData.name?.toLowerCase().includes('art')) {
-    assetType = AssetType.ART;
-  } else if (onChainData.symbol?.toLowerCase().includes('real') || onChainData.name?.toLowerCase().includes('real estate')) {
-    assetType = AssetType.REAL_ESTATE;
-  } else if (onChainData.symbol?.toLowerCase().includes('luxury') || onChainData.name?.toLowerCase().includes('luxury')) {
-    assetType = AssetType.LUXURY_GOODS;
-  } else if (onChainData.symbol?.toLowerCase().includes('credit') || onChainData.name?.toLowerCase().includes('credit')) {
-    assetType = AssetType.PRIVATE_CREDIT;
-  }
-
-  // Calculate rarity score with improved inputs
-  const rarityInput = {
-    totalSupply: parseFloat(onChainData.totalSupply || '0'),
-    holderCount: onChainData.holders || 0,
-    holderDistribution: this.calculateHolderDistribution(onChainData.holders || 0, parseFloat(onChainData.totalSupply || '1')),
-    age: await this.calculateContractAge(contractAddress, chainId) || 30,
-    uniqueness: this.calculateUniqueness(assetType, onChainData.symbol),
-    marketCap: assetData?.tvl || parseFloat(onChainData.totalSupply || '0') * 1 // Rough estimate
-  };
-
-  const rarityScore = rarityScorer.calculateRarityScore(rarityInput);
-  const rarityTier = rarityScorer.getRarityTier(rarityScore);
-  const rarityTierEnum = mapRarityTier(rarityTier);
-
-  // Calculate risk assessment with improved inputs
-  const riskInput = {
-    auditStatus: await this.checkAuditStatus(contractAddress),
-    centralization: this.calculateCentralization(rarityInput.holderDistribution),
-    liquidityDepth: assetData?.tvl || this.estimateLiquidity(parseFloat(onChainData.totalSupply || '0')),
-    regulatoryClarity: this.calculateRegulatoryClarity(assetType),
-    volatility: await this.calculateVolatility(contractAddress, chainId) || 0.2
-  };
-
-  const riskAssessment = riskAssessor.assessRisk(riskInput);
-  const riskTierEnum = mapRiskTier(riskAssessment.tier);
-
-  // Market prediction with improved data
-  const priceHistory = await this.fetchPriceHistory(contractAddress, chainId);
-  const volumeHistory = await this.fetchVolumeHistory(contractAddress, chainId);
-  
-  const predictionInput = {
-    priceHistory: priceHistory.length > 0 ? priceHistory : [100, 105, 102, 108, 110],
-    volume: volumeHistory.length > 0 ? volumeHistory : [1000000, 1200000, 800000, 1500000, 1300000],
-    yieldChanges: assetData?.apy ? [assetData.apy * 0.95, assetData.apy, assetData.apy * 1.05] : [0.05, 0.052, 0.048, 0.055, 0.057],
-    marketCap: assetData?.tvl || rarityInput.marketCap,
-    sentiment: await this.fetchSentiment(onChainData.symbol || contractAddress) || 0.7
-  };
-
-  const marketPrediction = marketPredictor.predictMarketMovement(predictionInput);
-
-  const analysis: RWAAnalysis = {
-    assetId: `${chainId}_${contractAddress}`,
-    rarityScore,
-    rarityTier: rarityTierEnum, // Use enum instead of any
-    riskTier: riskTierEnum, // Use enum instead of any
-    marketPrediction: marketPrediction.direction as 'Bullish' | 'Neutral' | 'Bearish',
-    predictionConfidence: marketPrediction.confidence,
-    healthScore: Math.round((rarityScore + riskAssessment.score) / 2),
-    metrics: {
-      liquidityDepth: assetData?.tvl || riskInput.liquidityDepth,
-      holderDistribution: rarityInput.holderDistribution,
-      yield: assetData?.apy || 0,
-      volatility: riskInput.volatility,
-      age: rarityInput.age
-    },
-    timestamp: new Date()
-  };
-
-  return analysis;
 }
 
 // Helper methods for improved analysis
@@ -239,6 +153,92 @@ async function fetchVolumeHistory(contractAddress: string, chainId: number): Pro
 async function fetchSentiment(symbolOrAddress: string): Promise<number> {
   // Would fetch from sentiment analysis APIs
   return 0.7; // Default neutral-positive sentiment
+}
+
+async function performAnalysis(contractAddress: string, chainId: number): Promise<RWAAnalysis> {
+  // Fetch data from multiple sources
+  const [onChainData, defiData] = await Promise.all([
+    onChainService.fetchTokenData(contractAddress, chainId),
+    defiLlamaService.fetchRWAPools()
+  ]);
+
+  const chainName = getChainName(chainId);
+  const assetData = defiData.find(pool => 
+    pool.chain === chainName && 
+    pool.symbol?.toLowerCase().includes(onChainData.symbol?.toLowerCase() || '')
+  );
+
+  // Determine asset type based on characteristics
+  let assetType = AssetType.TOKENIZED_TREASURY;
+  if (onChainData.symbol?.toLowerCase().includes('art') || onChainData.name?.toLowerCase().includes('art')) {
+    assetType = AssetType.ART;
+  } else if (onChainData.symbol?.toLowerCase().includes('real') || onChainData.name?.toLowerCase().includes('real estate')) {
+    assetType = AssetType.REAL_ESTATE;
+  } else if (onChainData.symbol?.toLowerCase().includes('luxury') || onChainData.name?.toLowerCase().includes('luxury')) {
+    assetType = AssetType.LUXURY_GOODS;
+  } else if (onChainData.symbol?.toLowerCase().includes('credit') || onChainData.name?.toLowerCase().includes('credit')) {
+    assetType = AssetType.PRIVATE_CREDIT;
+  }
+
+  // Calculate rarity score with improved inputs
+  const rarityInput = {
+    totalSupply: parseFloat(onChainData.totalSupply || '0'),
+    holderCount: onChainData.holders || 0,
+    holderDistribution: calculateHolderDistribution(onChainData.holders || 0, parseFloat(onChainData.totalSupply || '1')),
+    age: await calculateContractAge(contractAddress, chainId) || 30,
+    uniqueness: calculateUniqueness(assetType, onChainData.symbol),
+    marketCap: assetData?.tvl || parseFloat(onChainData.totalSupply || '0') * 1 // Rough estimate
+  };
+
+  const rarityScore = rarityScorer.calculateRarityScore(rarityInput);
+  const rarityTier = rarityScorer.getRarityTier(rarityScore);
+  const rarityTierEnum = mapRarityTier(rarityTier);
+
+  // Calculate risk assessment with improved inputs
+  const riskInput = {
+    auditStatus: await checkAuditStatus(contractAddress),
+    centralization: calculateCentralization(rarityInput.holderDistribution),
+    liquidityDepth: assetData?.tvl || estimateLiquidity(parseFloat(onChainData.totalSupply || '0')),
+    regulatoryClarity: calculateRegulatoryClarity(assetType),
+    volatility: await calculateVolatility(contractAddress, chainId) || 0.2
+  };
+
+  const riskAssessment = riskAssessor.assessRisk(riskInput);
+  const riskTierEnum = mapRiskTier(riskAssessment.tier);
+
+  // Market prediction with improved data
+  const priceHistory = await fetchPriceHistory(contractAddress, chainId);
+  const volumeHistory = await fetchVolumeHistory(contractAddress, chainId);
+  
+  const predictionInput = {
+    priceHistory: priceHistory.length > 0 ? priceHistory : [100, 105, 102, 108, 110],
+    volume: volumeHistory.length > 0 ? volumeHistory : [1000000, 1200000, 800000, 1500000, 1300000],
+    yieldChanges: assetData?.apy ? [assetData.apy * 0.95, assetData.apy, assetData.apy * 1.05] : [0.05, 0.052, 0.048, 0.055, 0.057],
+    marketCap: assetData?.tvl || rarityInput.marketCap,
+    sentiment: await fetchSentiment(onChainData.symbol || contractAddress) || 0.7
+  };
+
+  const marketPrediction = marketPredictor.predictMarketMovement(predictionInput);
+
+  const analysis: RWAAnalysis = {
+    assetId: `${chainId}_${contractAddress}`,
+    rarityScore,
+    rarityTier: rarityTierEnum, // Use enum instead of any
+    riskTier: riskTierEnum, // Use enum instead of any
+    marketPrediction: marketPrediction.direction as 'Bullish' | 'Neutral' | 'Bearish',
+    predictionConfidence: marketPrediction.confidence,
+    healthScore: Math.round((rarityScore + riskAssessment.score) / 2),
+    metrics: {
+      liquidityDepth: assetData?.tvl || riskInput.liquidityDepth,
+      holderDistribution: rarityInput.holderDistribution,
+      yield: assetData?.apy || 0,
+      volatility: riskInput.volatility,
+      age: rarityInput.age
+    },
+    timestamp: new Date()
+  };
+
+  return analysis;
 }
 
 export default router;

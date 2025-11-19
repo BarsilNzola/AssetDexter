@@ -1,5 +1,5 @@
-import { MarketPredictionInput } from '../../types/analysis';
-import { calculateVolatility } from '../../utils/helper';
+import { MarketPredictionInput } from '../../../../shared/src/types/analysis';
+import { calculateVolatility } from '../../../../shared/src/utils/helpers';
 
 export class MarketPredictor {
   predictMarketMovement(input: MarketPredictionInput): { 

@@ -1,4 +1,4 @@
-import { RiskAssessmentInput } from '../../types/analysis';
+import { RiskAssessmentInput } from '../../../../shared/src/types/analysis';
 
 export class RiskAssessor {
   assessRisk(input: RiskAssessmentInput): { tier: string; score: number } {

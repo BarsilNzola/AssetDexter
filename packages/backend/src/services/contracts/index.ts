@@ -2,6 +2,8 @@ import { ethers } from 'ethers';
 import RWADiscoveryCardABI from '../../../../contracts/artifacts/contracts/RWADiscoveryCard.sol/RWADiscoveryCard.json';
 import AssetDexterFactoryABI from '../../../../contracts/artifacts/contracts/AssetDexterFactory.sol/AssetDexterFactory.json';
 import { config } from '../../utils/config';
+import dotenv from 'dotenv';
+dotenv.config();
 
 export interface DiscoveryCardData {
   tokenId: bigint;

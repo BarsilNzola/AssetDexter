@@ -1,6 +1,6 @@
 import { ethers } from 'ethers';
 import { BlockchainService } from '../../utils/blockchain';
-import { RWA, OnChainData } from '../../types/rwa';
+import { RWA, OnChainData } from '../../../../shared/src/types/rwa';
 
 export class OnChainDataService {
   private blockchainService: BlockchainService;

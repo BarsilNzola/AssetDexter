@@ -1,5 +1,5 @@
-import { RarityScoreInput } from '../../types/analysis';
-import { normalizeValue, calculateGiniCoefficient } from '../../utils/helper';
+import { RarityScoreInput } from '../../../../shared/src/types/analysis';
+import { normalizeValue, calculateGiniCoefficient } from '../../../../shared/src/utils/helpers';
 
 export class RarityScorer {
   calculateRarityScore(input: RarityScoreInput): number {

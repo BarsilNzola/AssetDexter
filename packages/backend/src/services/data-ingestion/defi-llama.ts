@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { DeFiLlamaPool } from '../../types/rwa';
+import { DeFiLlamaPool } from '../../../../shared/src/types/rwa';
 import { config } from '../../utils/config';
 
 export class DeFiLlamaService {
