@@ -1,10 +1,5 @@
 export const config = {
   port: process.env.PORT || 3001,
-  redis: {
-    host: process.env.REDIS_HOST || 'localhost',
-    port: parseInt(process.env.REDIS_PORT || '6379'),
-    password: process.env.REDIS_PASSWORD
-  },
   linea: {
     rpcUrl: process.env.LINEA_RPC_URL || 'https://linea-sepolia-rpc.publicnode.com',
     chainId: 59141 // Linea Sepolia chain ID
@@ -23,7 +18,7 @@ export const config = {
   },
   apis: {
     defiLlama: 'https://yields.llama.fi/pools',
-    creatorBid: process.env.CREATORBID_API_URL,
-    alphaVantage: process.env.ALPHA_VANTAGE_API_KEY
+    creatorBid: 'https://api.creatorbid.com/v1',
+    covalent: process.env.COVALENT_API_KEY
   }
 };
