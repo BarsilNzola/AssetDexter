@@ -11,19 +11,53 @@ export class OnChainDataService {
 
   async fetchTokenData(contractAddress: string, chainId: number): Promise<Partial<RWA>> {
     try {
-      const tokenData = await this.blockchainService.getTokenData(contractAddress, chainId);
-      const holderCount = await this.blockchainService.getHolderCount(contractAddress, chainId);
+      // Basic ERC20 ABI with only the essential functions
+      const erc20Abi = [
+        'function symbol() view returns (string)',
+        'function name() view returns (string)',
+        'function totalSupply() view returns (uint256)',
+        'function decimals() view returns (uint8)',
+        'function balanceOf(address) view returns (uint256)'
+      ];
+
+      const provider = this.blockchainService.getProvider(chainId);
+      const contract = new ethers.Contract(contractAddress, erc20Abi, provider);
+
+      // Use Promise.allSettled to handle individual function failures gracefully
+      const [symbol, name, totalSupply] = await Promise.allSettled([
+        contract.symbol().catch(() => 'UNKNOWN'),
+        contract.name().catch(() => 'Unknown Token'),
+        contract.totalSupply().catch(() => ethers.toBigInt(0))
+      ]);
+
+      // Get holder count with error handling
+      let holderCount = 0;
+      try {
+        holderCount = await this.blockchainService.getHolderCount(contractAddress, chainId);
+      } catch (error) {
+        console.warn(`Could not fetch holder count for ${contractAddress}:`, error);
+      }
 
       return {
         address: contractAddress,
         chainId,
-        symbol: tokenData.symbol,
-        name: tokenData.name,
-        totalSupply: tokenData.totalSupply,
+        symbol: symbol.status === 'fulfilled' ? symbol.value : 'UNKNOWN',
+        name: name.status === 'fulfilled' ? name.value : 'Unknown Token',
+        totalSupply: totalSupply.status === 'fulfilled' ? totalSupply.value.toString() : '0',
         holders: holderCount
       };
     } catch (error) {
-      throw new Error(`Failed to fetch on-chain data: ${error}`);
+      console.error(`Failed to fetch on-chain data for ${contractAddress}:`, error);
+      
+      // Return minimal data instead of throwing
+      return {
+        address: contractAddress,
+        chainId,
+        symbol: 'UNKNOWN',
+        name: 'Unknown Token',
+        totalSupply: '0',
+        holders: 0
+      };
     }
   }
 

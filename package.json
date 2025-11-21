@@ -1,19 +1,23 @@
 {
-    "name": "assetdexter-monorepo",
-    "private": true,
-    "scripts": {
-      "dev": "turbo run dev",
-      "build": "turbo run build",
-      "test": "turbo run test",
-      "lint": "turbo run lint",
-      "chain": "turbo run chain",
-      "deploy": "turbo run deploy"
-    },
-    "devDependencies": {
-      "turbo": "^1.10.12",
-      "typescript": "^5.0.0",
-      "@types/node": "^20.0.0",
-      "eslint": "^8.0.0"
-    },
-    "packageManager": "pnpm@8.0.0"
+  "name": "assetdexter",
+  "version": "1.0.0",
+  "type": "module",
+  "private": true,
+  "workspaces": [
+    "packages/*"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:frontend\"",
+    "dev:backend": "cd packages/backend && npm run dev",
+    "dev:frontend": "cd packages/frontend && npm run dev",
+    "build": "turbo run build",
+    "start": "concurrently \"npm run start:backend\" \"npm run start:frontend\"",
+    "start:backend": "cd packages/backend && npm run dev",
+    "start:frontend": "cd packages/frontend && npm run dev",
+    "test": "turbo run test"
+  },
+  "devDependencies": {
+    "concurrently": "^8.2.2",
+    "turbo": "^1.10.0"
+  }
 }

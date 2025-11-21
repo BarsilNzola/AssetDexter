@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Scan, Zap } from 'lucide-react';
 import { Button } from './Button';
-import { API_ENDPOINTS } from '../../lib/utils/constants';
+import { API_ENDPOINTS, getRandomRWAToken } from '../../lib/utils/constants';
 
 interface ScannerProps {
   onScanComplete: (asset: any) => void;
@@ -31,20 +31,27 @@ export const Scanner: React.FC<ScannerProps> = ({
         return prev + 10;
       });
     }, 200);
-
+  
     try {
+      // Use contract addresses from constants
+      const randomToken = getRandomRWAToken();
+      const scanParams = {
+        contractAddress: randomToken.address,
+        chainId: randomToken.chainId
+      };
+  
       const response = await fetch(API_ENDPOINTS.SCAN, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({}),
+        body: JSON.stringify(scanParams),
       });
       
       if (!response.ok) {
         throw new Error('Scan failed');
       }
-
+  
       const scanResult = await response.json();
       
       clearInterval(interval);

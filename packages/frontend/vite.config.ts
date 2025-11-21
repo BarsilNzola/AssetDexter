@@ -17,6 +17,7 @@ export default defineConfig({
     alias: {
       '@': '/src',
     },
+    extensions: ['.ts', '.tsx', '.js', '.jsx'],
   },
   define: {
     'import.meta.env.PROD': JSON.stringify(process.env.NODE_ENV === 'production'),
