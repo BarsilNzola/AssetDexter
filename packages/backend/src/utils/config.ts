@@ -18,7 +18,7 @@ export const config = {
   },
   apis: {
     defiLlama: 'https://yields.llama.fi/pools',
-    creatorBid: 'https://api.creatorbid.com/v1',
+    creatorBid: 'https://creator.bid/api',
     covalent: process.env.COVALENT_API_KEY
   }
 };

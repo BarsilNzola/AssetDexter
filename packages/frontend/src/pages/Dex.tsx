@@ -1,34 +1,19 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useUserCards, useUserStats, useDiscoveryCard } from '../hooks/useContracts';
-import { useAssetDex } from '../hooks/useAssetDex';
 import { Card } from '../components/ui/Card';
 import { AssetCard } from '../components/assets/AssetCard';
 import { Button } from '../components/ui/Button';
 import { Trophy, Users, Star, Zap } from 'lucide-react';
-import { RWA, RarityTier, RiskTier } from '../../../shared/src/types/rwa';
+import { RarityTier, RiskTier } from '../../../shared/src/types/rwa';
 
 interface DexProps {
   onAssetSelect: (asset: any) => void;
 }
 
-// Helper function to transform RWA data for AssetCard
-const transformAssetForCard = (asset: RWA) => ({
-  id: asset.id,
-  name: asset.name,
-  symbol: asset.symbol,
-  type: asset.type.toString(),
-  rarity: RarityTier.COMMON, 
-  riskTier: RiskTier.MEDIUM,
-  movement: 'Neutral' as 'Bullish' | 'Neutral' | 'Bearish', // Default value
-  confidence: 50, // Default value
-  imageUrl: undefined,
-});
-
 export const Dex: React.FC<DexProps> = ({ onAssetSelect }) => {
   const { data: userCards = [], isLoading: cardsLoading } = useUserCards();
   const { data: userStats, isLoading: statsLoading } = useUserStats();
-  const { data: allAssets } = useAssetDex({ limit: 100 });
 
   const isLoading = cardsLoading || statsLoading;
 
@@ -101,7 +86,7 @@ export const Dex: React.FC<DexProps> = ({ onAssetSelect }) => {
           <Card className="text-center py-12">
             <Zap size={48} className="mx-auto text-gray-400 mb-4" />
             <h3 className="text-xl font-bold text-gray-600 mb-2">No cards yet!</h3>
-            <p className="text-gray-500 mb-4">Start scanning to discover assets and build your collection</p>
+            <p className="text-gray-500 mb-4">Scan discovered assets to build your collection</p>
             <Button onClick={() => window.location.hash = '#home'}>
               Start Scanning
             </Button>
@@ -118,30 +103,6 @@ export const Dex: React.FC<DexProps> = ({ onAssetSelect }) => {
             ))}
           </div>
         )}
-      </motion.div>
-
-      {/* Available Assets */}
-      <motion.div
-        initial={{ opacity: 0, y: 20 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ delay: 0.3 }}
-      >
-        <h2 className="text-2xl font-bold mb-6">Available Assets</h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {allAssets?.slice(0, 8).map((asset, index) => (
-            <motion.div
-              key={asset.id}
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ delay: 0.4 + index * 0.1 }}
-            >
-              <AssetCard 
-                asset={transformAssetForCard(asset)}
-                onClick={() => onAssetSelect(asset)}
-              />
-            </motion.div>
-          ))}
-        </div>
       </motion.div>
     </div>
   );

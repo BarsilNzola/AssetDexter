@@ -2,6 +2,28 @@ import { useQuery } from '@tanstack/react-query';
 import { useAccount } from 'wagmi';
 import { API_ENDPOINTS } from '../lib/utils/constants';
 
+export const useContracts = () => {
+  const scanAsset = async (contractAddress: string, chainId: number) => {
+    const response = await fetch(API_ENDPOINTS.SCAN, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ contractAddress, chainId }),
+    });
+    
+    if (!response.ok) {
+      throw new Error('Scan failed');
+    }
+    
+    return response.json();
+  };
+
+  return {
+    scanAsset,
+  };
+};
+
 export const useUserCards = () => {
   const { address } = useAccount();
 

@@ -180,13 +180,13 @@ async function fetchAssetById(id: string): Promise<RWA | null> {
           name: cardData.assetName,
           symbol: cardData.assetSymbol,
           address: cardData.assetAddress,
-          chainId: 59141, // Linea Sepolia - where your contracts are deployed
+          chainId: 59141,
           type: assetType,
-          totalSupply: '1', // NFTs have supply of 1
+          totalSupply: '1',
           price: Number(cardData.currentValue),
           marketCap: Number(cardData.currentValue),
-          liquidity: 0, // Would need to calculate from trading data
-          holders: 1, // NFT is owned by one address
+          liquidity: 0,
+          holders: 1,
           createdAt: new Date(Number(cardData.discoveryTimestamp) * 1000),
           updatedAt: new Date()
         };

@@ -2,12 +2,35 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Scan, Zap } from 'lucide-react';
 import { Button } from './Button';
-import { API_ENDPOINTS, getRandomRWAToken } from '../../lib/utils/constants';
+import { API_ENDPOINTS, getDiscoveredAssets } from '../../lib/utils/constants';
 
 interface ScannerProps {
-  onScanComplete: (asset: any) => void;
+  onScanComplete: (assets: any[]) => void;
   isScanning: boolean;
   setIsScanning: (scanning: boolean) => void;
+}
+
+interface ScannedAsset {
+  assetId: string;
+  rarityScore: number;
+  rarityTier: any;
+  riskTier: any;
+  marketPrediction: 'Bullish' | 'Neutral' | 'Bearish';
+  predictionConfidence: number;
+  healthScore: number;
+  metrics: {
+    liquidityDepth: number;
+    holderDistribution: number;
+    yield: number;
+    volatility: number;
+    age: number;
+  };
+  timestamp: string;
+  tokenInfo?: {
+    address: string;
+    chainId: number;
+    name: string;
+  };
 }
 
 export const Scanner: React.FC<ScannerProps> = ({
@@ -21,50 +44,72 @@ export const Scanner: React.FC<ScannerProps> = ({
     setIsScanning(true);
     setProgress(0);
     
-    // Simulate scanning progress
-    const interval = setInterval(() => {
-      setProgress(prev => {
-        if (prev >= 100) {
-          clearInterval(interval);
-          return 100;
-        }
-        return prev + 10;
-      });
-    }, 200);
-  
     try {
-      // Use contract addresses from constants
-      const randomToken = getRandomRWAToken();
-      const scanParams = {
-        contractAddress: randomToken.address,
-        chainId: randomToken.chainId
-      };
-  
-      const response = await fetch(API_ENDPOINTS.SCAN, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify(scanParams),
-      });
+      // Get discovered assets (will be empty if none discovered)
+      const discoveredAssets = await getDiscoveredAssets();
+      console.log('Discovered assets to scan:', discoveredAssets);
       
-      if (!response.ok) {
-        throw new Error('Scan failed');
+      if (discoveredAssets.length === 0) {
+        // Show error message - no assets to scan
+        setTimeout(() => {
+          onScanComplete([]);
+          setIsScanning(false);
+          setProgress(0);
+          
+          // You can show a toast or message here
+          alert('No assets discovered yet! Use the discovery feature to add assets to the contract first.');
+        }, 500);
+        return;
       }
-  
-      const scanResult = await response.json();
       
-      clearInterval(interval);
+      const allAssets: ScannedAsset[] = [];
+      
+      // Scan discovered addresses
+      for (let i = 0; i < discoveredAssets.length; i++) {
+        const token = discoveredAssets[i];
+        setProgress(Math.round((i / discoveredAssets.length) * 100));
+        
+        try {
+          const scanParams = {
+            contractAddress: token.address,
+            chainId: token.chainId
+          };
+  
+          console.log(`Scanning ${token.name} at ${token.address} on chain ${token.chainId}`);
+  
+          const response = await fetch(API_ENDPOINTS.SCAN, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify(scanParams),
+          });
+          
+          if (response.ok) {
+            const scanResult = await response.json();
+            allAssets.push({
+              ...scanResult,
+              tokenInfo: token
+            });
+            console.log(`Successfully scanned ${token.name}:`, scanResult);
+          } else {
+            console.warn(`Scan failed for ${token.name}:`, response.status);
+          }
+        } catch (error) {
+          console.error(`Failed to scan ${token.name}:`, error);
+        }
+      }
+      
       setProgress(100);
       
       setTimeout(() => {
-        onScanComplete(scanResult);
+        onScanComplete(allAssets);
         setIsScanning(false);
         setProgress(0);
       }, 500);
+      
     } catch (error) {
       console.error('Scan failed:', error);
-      clearInterval(interval);
       setIsScanning(false);
       setProgress(0);
     }

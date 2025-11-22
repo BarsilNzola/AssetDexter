@@ -11,13 +11,36 @@ export class DeFiLlamaService {
 
   async fetchRWAPools(): Promise<DeFiLlamaPool[]> {
     try {
+      console.log(`Fetching DeFi Llama data from: ${this.baseUrl}`);
       const response = await axios.get(this.baseUrl);
       const pools = response.data.data;
-
-      return pools.filter((pool: any) => 
-        this.isRWAPool(pool.project) &&
-        (pool.chain === 'Ethereum' || pool.chain === 'Base' || pool.chain === 'Linea')
-      ).map((pool: any) => ({
+  
+      console.log(`Total pools from DeFi Llama: ${pools.length}`);
+  
+      const filteredPools = pools.filter((pool: any) => {
+        const isRWA = this.isRWAPool(pool.project);
+        
+        // Broaden chain filter to include more chains with RWA presence
+        const isValidChain = [
+          'Ethereum',
+          'Base', 
+          'Linea',
+          'Solana',
+          'Avalanche',
+          'Polygon',
+          'Arbitrum'
+        ].includes(pool.chain);
+        
+        if (isRWA) {
+          console.log(`Found RWA pool: ${pool.project} on ${pool.chain} - TVL: ${pool.tvlUsd}`);
+        }
+        
+        return isRWA && isValidChain;
+      });
+  
+      console.log(`Filtered RWA pools: ${filteredPools.length}`);
+  
+      const result = filteredPools.map((pool: any) => ({
         id: pool.pool,
         chain: pool.chain,
         project: pool.project,
@@ -25,7 +48,11 @@ export class DeFiLlamaService {
         tvl: pool.tvlUsd,
         apy: pool.apy || 0
       }));
+  
+      console.log('Final RWA pools result:', result.length);
+      return result;
     } catch (error) {
+      console.error('Failed to fetch DeFi Llama data:', error);
       throw new Error(`Failed to fetch DeFi Llama data: ${error}`);
     }
   }
@@ -38,12 +65,27 @@ export class DeFiLlamaService {
       'goldfinch',
       'truefi',
       'credix',
-      'ribbon'
+      'ribbon',
+      'clearpool',
+      'morpho',
+      'compound',
+      'aave',
+      'mellow',
+      'usdbc',
+      'usdt',
+      'usdc',
+      'dai'
     ];
     
-    return rwaProjects.some(rwaProject => 
+    const isRWA = rwaProjects.some(rwaProject => 
       project.toLowerCase().includes(rwaProject)
     );
+    
+    if (isRWA) {
+      console.log(`Identified as RWA: ${project}`);
+    }
+    
+    return isRWA;
   }
 
   async getPoolTVL(poolId: string): Promise<number> {
