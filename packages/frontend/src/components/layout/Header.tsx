@@ -1,8 +1,8 @@
 import React from 'react';
-import { useAccount, useDisconnect } from 'wagmi';
+import { useAccount } from 'wagmi';
 import { motion } from 'framer-motion';
 import { Button } from '../ui/Button';
-import { WalletConnect } from '../ui/WalletConnect';
+import { ConnectWallet } from '../wallet/ConnectWallet'; 
 import { LogOut, User, Scan, BookOpen } from 'lucide-react';
 
 interface HeaderProps {
@@ -11,8 +11,7 @@ interface HeaderProps {
 }
 
 export const Header: React.FC<HeaderProps> = ({ currentPage, onPageChange }) => {
-  const { address, isConnected } = useAccount();
-  const { disconnect } = useDisconnect();
+  const { isConnected } = useAccount();
 
   const navItems = [
     { id: 'home', label: 'Scanner', icon: Scan },
@@ -38,27 +37,29 @@ export const Header: React.FC<HeaderProps> = ({ currentPage, onPageChange }) => 
             </h1>
           </motion.div>
 
-          {/* Navigation */}
-          <nav className="flex items-center gap-2">
-            {navItems.map((item) => {
-              const Icon = item.icon;
-              return (
-                <Button
-                  key={item.id}
-                  variant={currentPage === item.id ? 'primary' : 'secondary'}
-                  size="sm"
-                  icon={Icon}
-                  onClick={() => onPageChange(item.id)}
-                  className="font-pokemon text-xs"
-                >
-                  {item.label}
-                </Button>
-              );
-            })}
-          </nav>
+          {/* Navigation - Only show when connected */}
+          {isConnected && (
+            <nav className="flex items-center gap-2">
+              {navItems.map((item) => {
+                const Icon = item.icon;
+                return (
+                  <Button
+                    key={item.id}
+                    variant={currentPage === item.id ? 'primary' : 'secondary'}
+                    size="sm"
+                    icon={Icon}
+                    onClick={() => onPageChange(item.id)}
+                    className="font-pokemon text-xs"
+                  >
+                    {item.label}
+                  </Button>
+                );
+              })}
+            </nav>
+          )}
 
-          {/* Wallet Connect */}
-          <WalletConnect />
+          {/* Wallet Connect - New single button */}
+          <ConnectWallet />
         </div>
       </div>
     </header>

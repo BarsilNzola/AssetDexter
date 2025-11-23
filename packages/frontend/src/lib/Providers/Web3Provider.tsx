@@ -1,26 +1,29 @@
 import React from 'react';
 import { createConfig, http, WagmiProvider } from 'wagmi';
 import { lineaSepolia } from 'wagmi/chains';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { injected, walletConnect } from 'wagmi/connectors';
+import { injected, walletConnect, metaMask } from 'wagmi/connectors';
 
 const walletConnectProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
 
-const config = createConfig({
+export const config = createConfig({
   chains: [lineaSepolia],
   connectors: [
-    injected(),
+    injected({ target: 'metaMask' }),
+    metaMask({
+      dappMetadata: {
+        name: 'AssetDexter',
+        url: 'https://assetdexter.xyz',
+      },
+    }),
     walletConnect({
       projectId: walletConnectProjectId,
-      showQrModal: true,
+      showQrModal: false,
     }),
   ],
   transports: {
-    [lineaSepolia.id]: http('https://linea-sepolia-rpc.publicnode.com'), // Linea Sepolia RPC
+    [lineaSepolia.id]: http('https://linea-sepolia-rpc.publicnode.com'),
   },
 });
-
-const queryClient = new QueryClient();
 
 interface Web3ProviderProps {
   children: React.ReactNode;
@@ -29,9 +32,7 @@ interface Web3ProviderProps {
 export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
   return (
     <WagmiProvider config={config}>
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
+      {children}
     </WagmiProvider>
   );
 };
