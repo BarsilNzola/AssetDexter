@@ -4,13 +4,15 @@ import { RWA, RWAAnalysis, RarityTier, RiskTier } from '../../../../shared/src/t
 import { Button } from '../ui/Button';
 import { useMint } from '../../hooks/useMint';
 import { useAccount } from 'wagmi';
-import { ExternalLink, Users, DollarSign, TrendingUp, Shield } from 'lucide-react';
+import { ExternalLink, Users, DollarSign, TrendingUp, Shield, Plus, Package } from 'lucide-react';
 
 interface AssetDetailsProps {
   asset: RWA;
   analysis: RWAAnalysis;
   onMintSuccess: () => void;
   onBack: () => void;
+  onAddToCollection?: () => void;
+  isAddingToCollection?: boolean;
 }
 
 const RarityDisplay: React.FC<{ rarity: RarityTier }> = ({ rarity }) => {
@@ -75,6 +77,8 @@ export const AssetDetails: React.FC<AssetDetailsProps> = ({
   analysis,
   onMintSuccess,
   onBack,
+  onAddToCollection,
+  isAddingToCollection = false,
 }) => {
   const { address } = useAccount();
   const { mintDiscoveryCard, isMinting, isConfirmed } = useMint();
@@ -178,22 +182,40 @@ export const AssetDetails: React.FC<AssetDetailsProps> = ({
         </div>
       </div>
 
-      {/* Mint Action */}
-      <div className="flex gap-4">
-        <Button variant="secondary" onClick={onBack} className="flex-1">
-          Back to Scanner
-        </Button>
+      {/* Action Buttons */}
+      <div className="space-y-4">
+        {/* Add to Collection Button (only show if onAddToCollection is provided) */}
+        {onAddToCollection && (
+          <Button 
+            onClick={onAddToCollection}
+            loading={isAddingToCollection}
+            variant="primary"
+            className="w-full"
+            icon={Package}
+          >
+            {isAddingToCollection ? 'Adding to Collection...' : 'Add to Collection'}
+          </Button>
+        )}
+
+        {/* Mint Button */}
         <Button 
           variant="accent" 
           onClick={handleMint}
           loading={isMinting}
           disabled={!address || isMinting}
-          className="flex-1"
+          className="w-full"
+          icon={Plus}
         >
           {isMinting ? 'Minting...' : isConfirmed ? 'Minted!' : 'Mint Discovery Card'}
         </Button>
+
+        {/* Back Button */}
+        <Button variant="secondary" onClick={onBack} className="w-full">
+          Back to Scanner
+        </Button>
       </div>
 
+      {/* Status Messages */}
       {mintError && (
         <div className="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded">
           {mintError}

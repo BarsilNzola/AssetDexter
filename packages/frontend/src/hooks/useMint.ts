@@ -10,7 +10,8 @@ interface MintParams {
   assetSymbol: string;
   assetType: number;
   rarityScore: number;
-  riskTier: number;
+  rarity: number;        
+  risk: number;    
   predictionScore: number;
   currentValue: bigint;
   yieldRate: bigint;
@@ -32,7 +33,12 @@ export const useMint = () => {
   // Add to collection
   const addToCollection = useCallback(async (scannedAsset: any): Promise<boolean> => {
     if (!address) return false;
-
+  
+    // Ensure we have a proper symbol
+    const assetSymbol = scannedAsset.tokenInfo?.symbol || 
+                       scannedAsset.symbol || 
+                       (scannedAsset.tokenInfo?.name?.substring(0, 4) || 'UNKN').toUpperCase();
+  
     const newAsset: StoredAsset = {
       id: `${scannedAsset.assetId}_${Date.now()}`,
       assetData: scannedAsset,
@@ -47,13 +53,13 @@ export const useMint = () => {
         predictionScore: scannedAsset.predictionScore || 50,
         assetAddress: scannedAsset.tokenInfo?.address || scannedAsset.assetId,
         assetName: scannedAsset.tokenInfo?.name || scannedAsset.name,
-        assetSymbol: scannedAsset.tokenInfo?.symbol || scannedAsset.symbol,
+        assetSymbol: assetSymbol, // Use the properly formatted symbol
         currentValue: scannedAsset.metrics?.liquidityDepth || 1000000,
         yieldRate: Math.floor((scannedAsset.metrics?.yield || 0.05) * 10000),
         tokenURI: scannedAsset.tokenURI || ''
       }
     };
-
+  
     try {
       const currentCollection = await loadCollection();
       const updatedCollection = [...currentCollection, newAsset];
@@ -79,40 +85,70 @@ export const useMint = () => {
   // Mint asset
   const mintMutation = useMutation({
     mutationFn: async (params: { mintParams: MintParams; collectionId?: string }) => {
-      const response = await fetch(`${API_ENDPOINTS.CONTRACTS}/mint`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ...params.mintParams,
-          userAddress: address,
-        }),
+      // Convert BigInt values to strings for JSON serialization
+      const serializedParams = {
+        ...params.mintParams,
+        currentValue: params.mintParams.currentValue.toString(),
+        yieldRate: params.mintParams.yieldRate.toString()
+      };
+    
+      console.log('Sending mint request:', {
+        ...serializedParams,
+        userAddress: address,
       });
-
-      if (!response.ok) {
-        throw new Error(`Mint failed: ${response.statusText}`);
+    
+      try {
+        const response = await fetch(`${API_ENDPOINTS.CONTRACTS}/mint`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            ...serializedParams,
+            userAddress: address,
+          }),
+        });
+    
+        if (!response.ok) {
+          let errorDetails = '';
+          try {
+            const errorData = await response.json();
+            errorDetails = JSON.stringify(errorData);
+          } catch {
+            errorDetails = await response.text();
+          }
+          console.error('Mint failed with details:', {
+            status: response.status,
+            statusText: response.statusText,
+            details: errorDetails
+          });
+          throw new Error(`Mint failed: ${response.status} ${response.statusText} - ${errorDetails}`);
+        }
+    
+        const result = await response.json();
+        console.log('Mint successful:', result);
+    
+        // Update collection if collectionId provided
+        if (params.collectionId && address) {
+          const currentCollection = await loadCollection();
+          const updatedCollection = currentCollection.map(item =>
+            item.id === params.collectionId
+              ? { 
+                  ...item, 
+                  isMinted: true, 
+                  mintedTxHash: result.txHash,
+                  mintedAt: new Date()
+                }
+              : item
+          );
+          await storageService.storeUserCollection(address, updatedCollection);
+        }
+    
+        return result;
+      } catch (error) {
+        console.error('Fetch error:', error);
+        throw error;
       }
-
-      const result = await response.json();
-
-      // Update collection if collectionId provided
-      if (params.collectionId && address) {
-        const currentCollection = await loadCollection();
-        const updatedCollection = currentCollection.map(item =>
-          item.id === params.collectionId
-            ? { 
-                ...item, 
-                isMinted: true, 
-                mintedTxHash: result.txHash,
-                mintedAt: new Date()
-              }
-            : item
-        );
-        await storageService.storeUserCollection(address, updatedCollection);
-      }
-
-      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['user-cards'] });

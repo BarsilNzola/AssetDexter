@@ -3,6 +3,8 @@ import RWADiscoveryCardABI from '../../../../contracts/artifacts/contracts/RWADi
 import AssetDexterFactoryABI from '../../../../contracts/artifacts/contracts/AssetDexterFactory.sol/AssetDexterFactory.json';
 import { config } from '../../utils/config';
 import dotenv from 'dotenv';
+
+
 dotenv.config();
 
 export interface DiscoveryCardData {
@@ -37,39 +39,64 @@ export interface LeaderboardEntry {
 
 export class ContractService {
   private provider: ethers.JsonRpcProvider;
-  private discoveryCardContract: ethers.Contract;
-  private factoryContract: ethers.Contract;
-  private wallet: ethers.Wallet;
+  private discoveryCardContract: ethers.Contract | null = null;
+  private factoryContract: ethers.Contract | null = null;
+  private wallet: ethers.Wallet | null = null;
+  private isInitialized: boolean = false;
 
   constructor() {
     this.provider = new ethers.JsonRpcProvider(config.linea.rpcUrl);
-    
-    const discoveryCardAddress = process.env.DISCOVERY_CARD_ADDRESS;
-    const factoryAddress = process.env.FACTORY_ADDRESS;
-    const privateKey = process.env.PRIVATE_KEY;
+    this.initializeContracts();
+  }
 
-    if (!discoveryCardAddress || !factoryAddress || !privateKey) {
-      throw new Error('Contract addresses or private key not configured');
+  private initializeContracts(): void {
+    try {
+      const discoveryCardAddress = process.env.DISCOVERY_CARD_ADDRESS;
+      const factoryAddress = process.env.FACTORY_ADDRESS;
+      const privateKey = process.env.PRIVATE_KEY;
+
+      console.log('Environment variables:', {
+        discoveryCardAddress: discoveryCardAddress ? 'Set' : 'Missing',
+        factoryAddress: factoryAddress ? 'Set' : 'Missing',
+        privateKey: privateKey ? 'Set' : 'Missing'
+      });
+
+      if (!discoveryCardAddress || !factoryAddress || !privateKey) {
+        console.warn('Contract addresses or private key not configured. Read-only mode enabled.');
+        return;
+      }
+
+      this.discoveryCardContract = new ethers.Contract(
+        discoveryCardAddress,
+        RWADiscoveryCardABI.abi,
+        this.provider
+      );
+
+      this.factoryContract = new ethers.Contract(
+        factoryAddress,
+        AssetDexterFactoryABI.abi,
+        this.provider
+      );
+
+      this.wallet = new ethers.Wallet(privateKey, this.provider);
+      this.isInitialized = true;
+
+      console.log('Contract service initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize contract service:', error);
     }
+  }
 
-    this.discoveryCardContract = new ethers.Contract(
-      discoveryCardAddress,
-      RWADiscoveryCardABI.abi,
-      this.provider
-    );
-
-    this.factoryContract = new ethers.Contract(
-      factoryAddress,
-      AssetDexterFactoryABI.abi,
-      this.provider
-    );
-
-    this.wallet = new ethers.Wallet(privateKey, this.provider);
+  private ensureInitialized(): void {
+    if (!this.isInitialized) {
+      throw new Error('Contract service not initialized. Check environment variables.');
+    }
   }
 
   async getDiscoveryCard(tokenId: bigint): Promise<DiscoveryCardData> {
+    this.ensureInitialized();
     try {
-      const cardData = await this.discoveryCardContract.getDiscoveryCard(tokenId);
+      const cardData = await this.discoveryCardContract!.getDiscoveryCard(tokenId);
       
       return {
         tokenId: cardData.tokenId,
@@ -92,48 +119,54 @@ export class ContractService {
   }
 
   async getUserDiscoveryCards(userAddress: string): Promise<bigint[]> {
+    this.ensureInitialized();
     try {
-      return await this.discoveryCardContract.getDiscovererCards(userAddress);
+      return await this.discoveryCardContract!.getDiscovererCards(userAddress);
     } catch (error) {
       throw new Error(`Failed to fetch user discovery cards: ${error}`);
     }
   }
 
   async isAssetDiscovered(assetAddress: string): Promise<boolean> {
+    this.ensureInitialized();
     try {
-      return await this.discoveryCardContract.isAssetDiscovered(assetAddress);
+      return await this.discoveryCardContract!.isAssetDiscovered(assetAddress);
     } catch (error) {
       throw new Error(`Failed to check if asset is discovered: ${error}`);
     }
   }
 
   async getTotalDiscoveries(): Promise<bigint> {
+    this.ensureInitialized();
     try {
-      return await this.discoveryCardContract.totalDiscoveries();
+      return await this.discoveryCardContract!.totalDiscoveries();
     } catch (error) {
       throw new Error(`Failed to fetch total discoveries: ${error}`);
     }
   }
 
   async getUserStats(userAddress: string): Promise<UserStats> {
+    this.ensureInitialized();
     try {
-      return await this.factoryContract.getUserStats(userAddress);
+      return await this.factoryContract!.getUserStats(userAddress);
     } catch (error) {
       throw new Error(`Failed to fetch user stats: ${error}`);
     }
   }
 
   async getMintingFee(): Promise<bigint> {
+    this.ensureInitialized();
     try {
-      return await this.factoryContract.mintingFee();
+      return await this.factoryContract!.mintingFee();
     } catch (error) {
       throw new Error(`Failed to fetch minting fee: ${error}`);
     }
   }
 
   async getContractBalance(): Promise<bigint> {
+    this.ensureInitialized();
     try {
-      return await this.factoryContract.getContractBalance();
+      return await this.factoryContract!.getContractBalance();
     } catch (error) {
       throw new Error(`Failed to fetch contract balance: ${error}`);
     }
@@ -154,12 +187,12 @@ export class ContractService {
     yieldRate: bigint,
     tokenURI: string
   ): Promise<{ txHash: string; tokenId: bigint }> {
+    this.ensureInitialized();
     try {
       const mintingFee = await this.getMintingFee();
       
-      const factoryWithSigner = this.factoryContract.connect(this.wallet) as ethers.Contract;
+      const factoryWithSigner = this.factoryContract!.connect(this.wallet!) as ethers.Contract;
       
-      // Use the function name from ABI
       const tx = await factoryWithSigner.discoverRWA(
         assetType,
         rarity,
@@ -181,19 +214,17 @@ export class ContractService {
         throw new Error('Transaction failed');
       }
 
-      // Get the token ID from the event - null check
+      // Get the token ID from the event
       let tokenId: bigint = BigInt(0);
       
-      // Look for NewDiscovery event
       for (const log of receipt.logs) {
         try {
-          const parsedLog = this.factoryContract.interface.parseLog(log as any);
+          const parsedLog = this.factoryContract!.interface.parseLog(log as any);
           if (parsedLog && parsedLog.name === 'NewDiscovery') {
             tokenId = parsedLog.args.tokenId;
             break;
           }
         } catch {
-          // Continue checking other logs
           continue;
         }
       }
@@ -217,64 +248,90 @@ export class ContractService {
 
   // Get leaderboard data with proper event handling
   async getLeaderboard(limit: number = 10): Promise<LeaderboardEntry[]> {
+    this.ensureInitialized();
+    
     try {
-      // Get all discovery events to build leaderboard
-      const filter = this.factoryContract.filters.NewDiscovery();
-      const events = await this.factoryContract.queryFilter(filter, 0, 'latest');
+      // Since we don't have a built-in getAllUsers function, we'll track users from events
+      // But only from a reasonable block range to avoid the 50k block limit
       
-      // Group by user and calculate stats
-      const userStats = new Map<string, { totalScore: bigint; count: bigint; totalRarity: bigint }>();
+      const currentBlock = await this.provider.getBlockNumber();
+      const RECENT_BLOCKS = 20000; // Last 20k blocks should be safe
       
+      // Get recent events to find active users
+      const filter = this.factoryContract!.filters.NewDiscovery();
+      const events = await this.factoryContract!.queryFilter(
+        filter,
+        Math.max(0, currentBlock - RECENT_BLOCKS),
+        'latest'
+      ) as ethers.EventLog[];
+      
+      // Extract unique users from recent events
+      const uniqueUsers = new Set<string>();
       for (const event of events) {
-        // FIXED: Proper event args handling with type guards
-        if ('args' in event && event.args) {
-          const eventArgs = event.args as any;
-          if (eventArgs.discoverer && eventArgs.rarityScore) {
-            const user = eventArgs.discoverer as string;
-            const rarityScore = eventArgs.rarityScore as bigint;
-            
-            const current = userStats.get(user) || { 
-              totalScore: BigInt(0), 
-              count: BigInt(0), 
-              totalRarity: BigInt(0) 
-            };
-            
-            userStats.set(user, {
-              totalScore: current.totalScore + rarityScore,
-              count: current.count + BigInt(1),
-              totalRarity: current.totalRarity + rarityScore
-            });
-          }
+        if (event.args && event.args[0]) { // discoverer is first arg
+          uniqueUsers.add(event.args[0] as string);
         }
       }
       
-      // Convert to array and sort by total score
-      let entries = Array.from(userStats.entries()).map(([address, stats]) => ({
-        address,
-        totalScore: stats.totalScore,
-        discoveryCount: stats.count,
-        averageRarity: stats.count > 0 ? stats.totalRarity / stats.count : BigInt(0)
-      }));
+      // Get stats for each user
+      const userStatsPromises = Array.from(uniqueUsers).map(async (userAddress) => {
+        try {
+          const stats = await this.factoryContract!.getUserStats(userAddress);
+          return {
+            address: userAddress,
+            totalScore: stats[0], // totalScore
+            discoveryCount: stats[1], // discoveryCount
+            averageRarity: stats[2] // averageRarity
+          };
+        } catch (error) {
+          console.warn(`Failed to get stats for ${userAddress}:`, error);
+          return null;
+        }
+      });
       
-      // Sort by total score (descending)
+      const userStatsResults = await Promise.all(userStatsPromises);
+      
+      // Filter out failed requests and users with no discoveries
+      let entries = userStatsResults
+        .filter((entry): entry is NonNullable<typeof entry> => 
+          entry !== null && Number(entry.discoveryCount) > 0
+        )
+        .map(entry => ({
+          ...entry,
+          rank: 0 // Will be set after sorting
+        }));
+      
+      // Sort by totalScore (descending)
       entries.sort((a, b) => {
         if (a.totalScore > b.totalScore) return -1;
         if (a.totalScore < b.totalScore) return 1;
         return 0;
       });
       
-      // Add ranks and limit results
+      // Assign ranks
       return entries.slice(0, limit).map((entry, index) => ({
         ...entry,
         rank: index + 1
       }));
+      
     } catch (error) {
-      throw new Error(`Failed to fetch leaderboard: ${error}`);
+      console.error('Leaderboard fetch failed:', error);
+      
+      // Ultimate fallback - return empty array
+      return [];
     }
   }
+  
+  // Alternative leaderboard implementation using contract state
+  private async getLeaderboardFromState(limit: number = 10): Promise<LeaderboardEntry[]> {
+    // This would require tracking user addresses in your contract
+    // For now, return empty array as fallback
+    console.warn('Using fallback leaderboard implementation');
+    return [];
+  }
 
-  // Get user's rank
   async getUserRank(userAddress: string): Promise<number> {
+    this.ensureInitialized();
     try {
       const leaderboard = await this.getLeaderboard(100);
       const userEntry = leaderboard.find(entry => 
@@ -285,5 +342,19 @@ export class ContractService {
     } catch (error) {
       throw new Error(`Failed to fetch user rank: ${error}`);
     }
+  }
+
+  // Check if service is properly initialized
+  isReady(): boolean {
+    return this.isInitialized;
+  }
+
+  // Get initialization status
+  getStatus(): { initialized: boolean; hasContracts: boolean; hasWallet: boolean } {
+    return {
+      initialized: this.isInitialized,
+      hasContracts: !!(this.discoveryCardContract && this.factoryContract),
+      hasWallet: !!this.wallet
+    };
   }
 }

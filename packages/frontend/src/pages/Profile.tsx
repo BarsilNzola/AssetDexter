@@ -61,35 +61,58 @@ const MintingLeaderboard: React.FC = () => {
       </h2>
       
       <div className="space-y-3">
-        <div className="grid grid-cols-12 gap-4 font-semibold text-sm text-gray-600 pb-2 border-b">
-          <div className="col-span-1">Rank</div>
+        {/* Header - Better grid distribution */}
+        <div className="grid grid-cols-12 gap-2 px-2 font-semibold text-sm text-gray-600 pb-2 border-b">
+          <div className="col-span-2 text-center">Rank</div>
           <div className="col-span-5">Collector</div>
-          <div className="col-span-3">Minted</div>
-          <div className="col-span-3">Score</div>
+          <div className="col-span-2 text-center">Minted</div>
+          <div className="col-span-3 text-center">Score</div>
         </div>
         
         {leaderboardData?.map((entry: any) => (
           <div
             key={entry.address}
-            className={`grid grid-cols-12 gap-4 items-center p-3 rounded-lg ${
+            className={`grid grid-cols-12 gap-2 items-center p-3 rounded-lg ${
               entry.address === address 
                 ? 'bg-primary/10 border border-primary/20' 
-                : 'bg-gray-50'
+                : 'bg-gray-50 hover:bg-gray-100'
             }`}
           >
-            <div className="col-span-1 font-bold flex items-center">
-              {getRankIcon(entry.rank)}
-            </div>
-            <div className="col-span-5">
-              <div className="font-semibold">
-                {entry.address === address ? 'You' : `${entry.address.slice(0, 6)}...${entry.address.slice(-4)}`}
+            {/* Rank */}
+            <div className="col-span-2 flex justify-center">
+              <div className="font-bold flex items-center justify-center min-w-[30px]">
+                {getRankIcon(entry.rank)}
               </div>
             </div>
-            <div className="col-span-3 font-bold text-primary">
-              {entry.discoveryCount}
+            
+            {/* Collector - Better address handling */}
+            <div className="col-span-5">
+              <div className="font-semibold truncate">
+                {entry.address === address ? (
+                  <span className="text-primary font-bold">You</span>
+                ) : (
+                  <span className="font-mono text-sm">
+                    {`${entry.address.slice(0, 8)}...${entry.address.slice(-6)}`}
+                  </span>
+                )}
+              </div>
             </div>
-            <div className="col-span-3 font-bold text-purple-500">
-              {entry.totalScore}
+            
+            {/* Minted Count */}
+            <div className="col-span-2 text-center">
+              <div className="font-bold text-primary">
+                {entry.discoveryCount}
+              </div>
+            </div>
+            
+            {/* Score */}
+            <div className="col-span-3 text-center">
+              <div className="font-bold text-purple-500">
+                {typeof entry.totalScore === 'string' 
+                  ? parseInt(entry.totalScore).toLocaleString()
+                  : entry.totalScore.toLocaleString()
+                }
+              </div>
             </div>
           </div>
         ))}
@@ -99,6 +122,7 @@ const MintingLeaderboard: React.FC = () => {
         <div className="text-center py-8 text-gray-500">
           <Trophy size={32} className="mx-auto mb-3 text-gray-400" />
           <p>No leaderboard data available yet</p>
+          <p className="text-sm text-gray-400 mt-1">Mint some assets to appear here!</p>
         </div>
       )}
     </Card>
@@ -117,9 +141,9 @@ export const Profile: React.FC = () => {
     enabled: !!address && !!loadCollection
   });
 
-  // Calculate real stats from user cards and collection
+  // Calculate real stats - Use actual minted count from userStats
   const calculatedStats = React.useMemo(() => {
-    const totalDiscoveries = userCards.length;
+    const totalDiscoveries = Number(userStats?.discoveryCount) || 0; // Use actual minted count
     const collectionSize = collection.length;
     
     // Calculate average rarity from collection
@@ -138,50 +162,53 @@ export const Profile: React.FC = () => {
       totalScore: collectionScore,
       collectionSize
     };
-  }, [userCards, collection]);
+  }, [userStats, collection]);
 
   // Use contract stats if available, otherwise use calculated stats
   const displayStats = userStats || calculatedStats;
 
-  // Calculate achievements based on actual data
+  // Use actual minted count for achievements
+  const actualMintedCount = Number(userStats?.discoveryCount) || 0;
+  
+  // Calculate achievements based on ACTUAL minted data
   const achievements = React.useMemo(() => [
     { 
       name: 'First Discovery', 
-      earned: userCards.length >= 1, 
+      earned: actualMintedCount >= 1, 
       icon: Zap,
-      description: 'Discover your first RWA asset'
+      description: 'Mint your first RWA asset'
     },
     { 
       name: 'Rare Collector', 
-      earned: userCards.length >= 3, 
+      earned: actualMintedCount >= 3, 
       icon: Star,
-      description: 'Collect 3 different RWA assets'
+      description: 'Mint 3 different RWA assets'
     },
     { 
       name: 'Dex Master', 
-      earned: userCards.length >= 5, 
+      earned: actualMintedCount >= 5, 
       icon: Trophy,
-      description: 'Build a collection of 5+ assets'
+      description: 'Mint a collection of 5+ assets'
     },
     { 
       name: 'Risk Taker', 
-      earned: userCards.length > 0,
+      earned: collection.length > 0, // Based on collection, not minted
       icon: Shield,
       description: 'Hold assets with speculative risk'
     },
     { 
       name: 'Early Adopter', 
-      earned: userCards.length > 0, 
+      earned: actualMintedCount > 0, 
       icon: Clock,
       description: 'Join AssetDexter during early stages'
     },
     { 
       name: 'Portfolio Builder', 
-      earned: userCards.length >= 2, 
+      earned: collection.length >= 2, // Based on collection diversity
       icon: Package,
       description: 'Diversify with multiple asset types'
     },
-  ], [userCards]);
+  ], [actualMintedCount, collection.length]);
 
   // Calculate collection value from actual asset data
   const collectionValue = React.useMemo(() => {
@@ -208,14 +235,21 @@ export const Profile: React.FC = () => {
     return types.size;
   }, [collection]);
 
-  // Stats for display
+  // Stats for display - Use correct counts
   const stats = [
     {
       icon: Trophy,
-      label: 'Total Discoveries',
-      value: displayStats?.discoveryCount || userCards.length || '0',
+      label: 'Minted NFTs',
+      value: displayStats?.discoveryCount || '0', // Use actual minted count
       color: 'text-yellow-500',
-      description: 'Assets discovered and collected'
+      description: 'Assets minted on blockchain'
+    },
+    {
+      icon: Package,
+      label: 'In Collection',
+      value: collection.length, // Collection items
+      color: 'text-blue-500',
+      description: 'Assets in your collection'
     },
     {
       icon: Star,
@@ -223,13 +257,6 @@ export const Profile: React.FC = () => {
       value: displayStats?.averageRarity ? `${displayStats.averageRarity}/100` : 'N/A',
       color: 'text-purple-500',
       description: 'Average rarity score of your collection'
-    },
-    {
-      icon: Award,
-      label: 'Collection Score',
-      value: displayStats?.totalScore || 'N/A',
-      color: 'text-primary',
-      description: 'Overall collection quality score'
     },
     {
       icon: TrendingUp,
@@ -268,21 +295,21 @@ export const Profile: React.FC = () => {
         <div className="w-32 h-32 mx-auto mb-6 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center text-white">
           <Users size={48} />
         </div>
-        <h1 className="text-4xl font-bold mb-2 font-pokemon text-primary">TRAINER PROFILE</h1>
+        <h1 className="text-4xl font-bold mb-2 font-pokemon text-primary">PROFILE</h1>
         <p className="text-gray-600 text-lg">Master Collector of Real-World Assets</p>
         <div className="mt-4 text-sm text-gray-500 font-mono bg-gray-100 rounded-lg py-2 px-4 inline-block">
           {address.slice(0, 8)}...{address.slice(-6)}
         </div>
         
-        {/* Quick Stats */}
+        {/* Quick Stats - Use correct counts */}
         <div className="mt-6 flex justify-center gap-6 text-sm">
           <div className="text-center">
-            <div className="font-bold text-primary">{userCards.length}</div>
-            <div className="text-gray-600">Cards</div>
+            <div className="font-bold text-primary">{actualMintedCount}</div>
+            <div className="text-gray-600">Minted</div>
           </div>
           <div className="text-center">
-            <div className="font-bold text-green-500">{uniqueAssetTypes}</div>
-            <div className="text-gray-600">Asset Types</div>
+            <div className="font-bold text-green-500">{collection.length}</div>
+            <div className="text-gray-600">In Collection</div>
           </div>
           <div className="text-center">
             <div className="font-bold text-purple-500">
@@ -293,7 +320,7 @@ export const Profile: React.FC = () => {
         </div>
       </motion.div>
 
-      {/* Stats Grid */}
+      {/* Stats Grid - Updated labels and values */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
@@ -314,7 +341,7 @@ export const Profile: React.FC = () => {
       </motion.div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Collection Overview */}
+        {/* Collection Overview - Updated counts */}
         <div className="lg:col-span-2 space-y-8">
           <motion.div
             initial={{ opacity: 0, x: -20 }}
@@ -329,10 +356,17 @@ export const Profile: React.FC = () => {
               <div className="space-y-4">
                 <div className="flex justify-between items-center py-2 border-b border-gray-100">
                   <span className="text-gray-600 flex items-center gap-2">
-                    <Users size={16} />
-                    Total Cards:
+                    <Trophy size={16} />
+                    Minted NFTs:
                   </span>
-                  <span className="font-bold text-primary">{userCards.length}</span>
+                  <span className="font-bold text-primary">{actualMintedCount}</span>
+                </div>
+                <div className="flex justify-between items-center py-2 border-b border-gray-100">
+                  <span className="text-gray-600 flex items-center gap-2">
+                    <Package size={16} />
+                    In Collection:
+                  </span>
+                  <span className="font-bold text-blue-500">{collection.length}</span>
                 </div>
                 <div className="flex justify-between items-center py-2 border-b border-gray-100">
                   <span className="text-gray-600 flex items-center gap-2">
@@ -370,7 +404,7 @@ export const Profile: React.FC = () => {
             </Card>
           </motion.div>
 
-          {/* Recent Activity */}
+          {/* Recent Activity -  Show collection activity instead of userCards */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
@@ -382,32 +416,39 @@ export const Profile: React.FC = () => {
                 Recent Activity
               </h2>
               <div className="space-y-3">
-                {userCards.length > 0 ? (
-                  userCards.slice(0, 5).map((cardId: string) => (
-                    <div
-                      key={cardId}
-                      className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-primary transition-colors"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center text-white text-sm font-bold">
-                          #{cardId}
-                        </div>
-                        <div>
-                          <div className="font-semibold text-gray-900">Discovery Card #{cardId}</div>
-                          <div className="text-sm text-gray-600">
-                            Added to collection
+                {collection.length > 0 ? (
+                  collection.slice(0, 5).map((asset: any) => {
+                    // Proper data extraction with comprehensive fallbacks
+                    const assetData = asset.assetData || asset.contractData || asset;
+                    const assetName = assetData.name || assetData.assetName || 'Unknown Asset';
+                    const assetSymbol = assetData.symbol || assetData.assetSymbol || 'ASSET';
+                    
+                    return (
+                      <div
+                        key={asset.id || asset.tokenId}
+                        className="flex items-center justify-between p-4 bg-gray-50 rounded-lg border border-gray-200 hover:border-primary transition-colors"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center text-white text-sm font-bold">
+                            {assetSymbol.substring(0, 4)}
+                          </div>
+                          <div>
+                            <div className="font-semibold text-gray-900">
+                              {assetName}
+                            </div>
+                            <div className="text-sm text-gray-600">
+                              {asset.isMinted ? 'Minted' : 'Added to collection'} • {new Date(asset.scannedAt || asset.discoveryTimestamp).toLocaleDateString()}
+                            </div>
                           </div>
                         </div>
+                        <div className={`text-xs font-bold px-2 py-1 rounded-full ${
+                          asset.isMinted ? 'bg-green-500 text-white' : 'bg-blue-500 text-white'
+                        }`}>
+                          {asset.isMinted ? 'MINTED' : 'IN COLLECTION'}
+                        </div>
                       </div>
-                      <Button 
-                        variant="secondary" 
-                        size="sm"
-                        onClick={() => window.location.hash = `#asset-${cardId}`}
-                      >
-                        View Details
-                      </Button>
-                    </div>
-                  ))
+                    );
+                  })
                 ) : (
                   <div className="text-center py-8 text-gray-500">
                     <Zap size={32} className="mx-auto mb-3 text-gray-400" />

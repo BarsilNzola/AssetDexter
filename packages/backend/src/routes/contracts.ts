@@ -240,6 +240,13 @@ router.get('/minting-fee', async (req, res) => {
 
 router.post('/mint', async (req, res) => {
   try {
+    if (!contractService.isReady()) {
+      return res.status(503).json({ 
+        error: 'Minting service unavailable',
+        details: 'Contract service not initialized. Check PRIVATE_KEY and contract addresses in environment variables.'
+      });
+    }
+
     const {
       userAddress,
       assetType,
@@ -250,8 +257,8 @@ router.post('/mint', async (req, res) => {
       assetAddress,
       assetName,
       assetSymbol,
-      currentValue,
-      yieldRate,
+      currentValue, // This will be a string now
+      yieldRate,    // This will be a string now
       tokenURI = ''
     } = req.body;
 
@@ -280,11 +287,12 @@ router.post('/mint', async (req, res) => {
       assetAddress,
       assetName,
       assetSymbol,
-      currentValue: currentValue.toString(),
-      yieldRate: yieldRate.toString(),
+      currentValue,
+      yieldRate,
       tokenURI
     });
 
+    // Convert string values back to BigInt for contract call
     const result = await contractService.mintDiscoveryCard(
       userAddress,
       Number(assetType),
@@ -295,8 +303,8 @@ router.post('/mint', async (req, res) => {
       assetAddress,
       assetName,
       assetSymbol,
-      BigInt(currentValue),
-      BigInt(yieldRate),
+      BigInt(currentValue), // Convert string back to BigInt
+      BigInt(yieldRate),    // Convert string back to BigInt
       tokenURI
     );
 

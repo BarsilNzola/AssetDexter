@@ -31,7 +31,7 @@ export const Dex: React.FC<DexProps> = ({ onAssetSelect }) => {
     enabled: !!address && !!loadCollection
   });
 
-  const [activeTab, setActiveTab] = useState<'minted' | 'unminted' | 'contract'>('contract');
+  const [activeTab, setActiveTab] = useState<'minted' | 'unminted' | 'collection'>('minted');
 
   useEffect(() => {
     if (address) {
@@ -40,6 +40,8 @@ export const Dex: React.FC<DexProps> = ({ onAssetSelect }) => {
   }, [address, loadCollection]);
 
   const isLoading = cardsLoading || statsLoading || collectionLoading;
+  
+  // Separate assets by status
   const unmintedAssets = collection.filter((asset: any) => !asset.isMinted);
   const mintedAssets = collection.filter((asset: any) => asset.isMinted);
 
@@ -48,20 +50,31 @@ export const Dex: React.FC<DexProps> = ({ onAssetSelect }) => {
       console.error('No contract data found for asset:', asset);
       return;
     }
-
+  
+    console.log('Minting asset with contractData:', asset.contractData);
+  
+    // Ensure assetSymbol has a value
+    const assetSymbol = asset.contractData.assetSymbol || 
+                       (asset.contractData.assetName?.substring(0, 4) || 'UNKN').toUpperCase();
+  
+    const mintParams = {
+      assetAddress: asset.contractData.assetAddress || '0x0',
+      assetName: asset.contractData.assetName || 'Unknown Asset',
+      assetSymbol: assetSymbol, // Use the ensured symbol
+      assetType: asset.contractData.assetType || 0,
+      rarity: asset.contractData.rarity || 1,
+      risk: asset.contractData.risk || 1,
+      rarityScore: asset.contractData.rarityScore || 50,
+      predictionScore: asset.contractData.predictionScore || 50,
+      currentValue: BigInt(asset.contractData.currentValue || 1000000),
+      yieldRate: BigInt(asset.contractData.yieldRate || 500),
+      tokenURI: asset.contractData.tokenURI || ''
+    };
+  
+    console.log('Final mint params:', mintParams);
+  
     try {
-      await mintDiscoveryCard({
-        assetAddress: asset.contractData.assetAddress,
-        assetName: asset.contractData.assetName,
-        assetSymbol: asset.contractData.assetSymbol,
-        assetType: asset.contractData.assetType,
-        rarityScore: asset.contractData.rarityScore,
-        riskTier: asset.contractData.risk,
-        predictionScore: asset.contractData.predictionScore,
-        currentValue: BigInt(asset.contractData.currentValue),
-        yieldRate: BigInt(asset.contractData.yieldRate),
-        tokenURI: asset.contractData.tokenURI
-      }, asset.id);
+      await mintDiscoveryCard(mintParams, asset.id);
     } catch (error) {
       console.error('Minting failed:', error);
     }
@@ -74,6 +87,8 @@ export const Dex: React.FC<DexProps> = ({ onAssetSelect }) => {
       console.error('Failed to remove asset:', error);
     }
   };
+
+  const mintedNFTsCount = userStats?.discoveryCount || 0;
 
   const totalCollectionValue = collection.reduce((sum: number, asset: any) => {
     return sum + (asset.assetData.metrics?.liquidityDepth || 0);
@@ -126,7 +141,7 @@ export const Dex: React.FC<DexProps> = ({ onAssetSelect }) => {
         <Card className="text-center p-6">
           <Trophy className="mx-auto text-yellow-500 mb-2" size={32} />
           <div className="text-2xl font-bold text-primary">
-            {userStats?.discoveryCount || userCards.length}
+            {mintedNFTsCount}
           </div>
           <div className="text-gray-600">Minted NFTs</div>
         </Card>
@@ -164,12 +179,12 @@ export const Dex: React.FC<DexProps> = ({ onAssetSelect }) => {
       >
         <div className="flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg">
           <Button
-            variant={activeTab === 'contract' ? 'primary' : 'secondary'}
-            onClick={() => setActiveTab('contract')}
+            variant={activeTab === 'minted' ? 'primary' : 'secondary'}
+            onClick={() => setActiveTab('minted')}
             className="flex-1"
           >
             <Crown className="w-4 h-4 mr-2" />
-            Minted NFTs ({userCards.length})
+            Minted NFTs ({userStats?.discoveryCount.length})
           </Button>
           <Button
             variant={activeTab === 'unminted' ? 'primary' : 'secondary'}
@@ -180,19 +195,20 @@ export const Dex: React.FC<DexProps> = ({ onAssetSelect }) => {
             Ready to Mint ({unmintedAssets.length})
           </Button>
           <Button
-            variant={activeTab === 'minted' ? 'primary' : 'secondary'}
-            onClick={() => setActiveTab('minted')}
+            variant={activeTab === 'collection' ? 'primary' : 'secondary'}
+            onClick={() => setActiveTab('collection')}
             className="flex-1"
           >
             <Coins className="w-4 h-4 mr-2" />
-            Collection ({mintedAssets.length})
+            My Collection ({collection.length})
           </Button>
         </div>
 
         {/* Content based on active tab */}
-        {activeTab === 'contract' && (
+        {activeTab === 'minted' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {userCards.map((cardId: string, index: number) => (
+            {/* Only show the first N cards based on discoveryCount */}
+            {userCards.slice(0, Number(mintedNFTsCount)).map((cardId: string, index: number) => (
               <ContractCard 
                 key={cardId} 
                 tokenId={cardId} 
@@ -200,11 +216,11 @@ export const Dex: React.FC<DexProps> = ({ onAssetSelect }) => {
                 delay={index * 0.1}
               />
             ))}
-            {userCards.length === 0 && (
+            {mintedNFTsCount === 0 && (
               <div className="col-span-full text-center py-12">
                 <Zap size={48} className="mx-auto text-gray-400 mb-4" />
                 <h3 className="text-xl font-bold text-gray-600 mb-2">No minted NFTs yet!</h3>
-                <p className="text-gray-500">Scan assets and mint them to build your collection</p>
+                <p className="text-gray-500">Mint assets from your collection to see them here</p>
               </div>
             )}
           </div>
@@ -226,32 +242,38 @@ export const Dex: React.FC<DexProps> = ({ onAssetSelect }) => {
               <div className="col-span-full text-center py-12">
                 <Package size={48} className="mx-auto text-gray-400 mb-4" />
                 <h3 className="text-xl font-bold text-gray-600 mb-2">No assets ready to mint</h3>
-                <p className="text-gray-500">Scan assets and add them to your collection first</p>
+                <p className="text-gray-500">Add scanned assets to your collection first</p>
                 <Button 
                   className="mt-4"
                   onClick={() => window.location.hash = '#home'}
                 >
-                  Start Scanning
+                  Scan Assets
                 </Button>
               </div>
             )}
           </div>
         )}
 
-        {activeTab === 'minted' && (
+        {activeTab === 'collection' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {mintedAssets.map((asset: any, index: number) => (
-              <MintedCard 
+            {collection.map((asset: any, index: number) => (
+              <CollectionCard 
                 key={asset.id}
                 asset={asset}
                 delay={index * 0.1}
               />
             ))}
-            {mintedAssets.length === 0 && (
+            {collection.length === 0 && (
               <div className="col-span-full text-center py-12">
                 <Coins size={48} className="mx-auto text-gray-400 mb-4" />
                 <h3 className="text-xl font-bold text-gray-600 mb-2">Collection is empty</h3>
-                <p className="text-gray-500">Assets you mint will appear here</p>
+                <p className="text-gray-500">Scan assets and add them to your collection</p>
+                <Button 
+                  className="mt-4"
+                  onClick={() => window.location.hash = '#home'}
+                >
+                  Start Scanning
+                </Button>
               </div>
             )}
           </div>
@@ -364,13 +386,16 @@ const UnmintedCard: React.FC<{
             icon={Coins}
           />
         </div>
+        <div className="absolute top-2 left-2 bg-orange-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+          READY TO MINT
+        </div>
       </div>
     </motion.div>
   );
 };
 
-// Minted Card Component
-const MintedCard: React.FC<{ 
+// Collection Card Component (shows all collection items)
+const CollectionCard: React.FC<{ 
   asset: any;
   delay: number;
 }> = ({ asset, delay }) => {
@@ -387,6 +412,8 @@ const MintedCard: React.FC<{
     confidence: data.predictionConfidence || 50
   };
 
+  const status = asset.isMinted ? 'MINTED' : 'IN COLLECTION';
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
@@ -395,8 +422,10 @@ const MintedCard: React.FC<{
       className="relative"
     >
       <AssetCard asset={assetCardProps} />
-      <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
-        MINTED
+      <div className={`absolute top-2 left-2 text-white text-xs font-bold px-2 py-1 rounded-full ${
+        asset.isMinted ? 'bg-green-500' : 'bg-blue-500'
+      }`}>
+        {status}
       </div>
     </motion.div>
   );
