@@ -4,7 +4,6 @@ import { lineaSepolia } from 'wagmi/chains';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { injected, walletConnect } from 'wagmi/connectors';
 
-// Get WalletConnect Project ID from environment or use a default
 const walletConnectProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
 
 const config = createConfig({
