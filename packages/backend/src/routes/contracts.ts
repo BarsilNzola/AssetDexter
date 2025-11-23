@@ -38,12 +38,24 @@ router.get('/debug-contract', async (req, res) => {
     for (let i = 0; i < Math.min(total, 10); i++) {
       try {
         const card = await contractService.getDiscoveryCard(BigInt(i));
-        discoveries.push({
-          tokenId: i,
-          assetName: card.assetName,
+        
+        // Explicitly convert ALL BigInt properties
+        const serializedCard = {
+          tokenId: card.tokenId.toString(),
+          discoverer: card.discoverer,
+          discoveryTimestamp: card.discoveryTimestamp.toString(),
+          assetType: card.assetType,
+          rarity: card.rarity,
+          risk: card.risk,
+          rarityScore: card.rarityScore.toString(),
+          predictionScore: card.predictionScore.toString(),
           assetAddress: card.assetAddress,
-          assetSymbol: card.assetSymbol
-        });
+          assetName: card.assetName,
+          assetSymbol: card.assetSymbol,
+          currentValue: card.currentValue.toString(),
+          yieldRate: card.yieldRate.toString()
+        };
+        discoveries.push(serializedCard);
       } catch (error) {
         console.warn(`Failed to fetch discovery card ${i}:`, error);
       }
@@ -67,26 +79,56 @@ router.get('/discovery-card/:tokenId', async (req, res) => {
   try {
     const { tokenId } = req.params;
     
+    console.log(`=== FETCHING DISCOVERY CARD ${tokenId} ===`);
+    
     const cacheKey = `discovery-card:${tokenId}`;
     
     const cardData = await cache.getOrSet(
       cacheKey,
       async () => {
         const data = await contractService.getDiscoveryCard(BigInt(tokenId));
-        // Convert ALL BigInt values to string for JSON serialization
-        return {
-          ...data,
+        
+        console.log(`Raw data for token ${tokenId}:`, {
+          tokenId: data.tokenId,
+          tokenIdType: typeof data.tokenId,
+          rarityScore: data.rarityScore,
+          rarityScoreType: typeof data.rarityScore,
+          predictionScore: data.predictionScore,
+          predictionScoreType: typeof data.predictionScore,
+          currentValue: data.currentValue,
+          currentValueType: typeof data.currentValue,
+          yieldRate: data.yieldRate,
+          yieldRateType: typeof data.yieldRate
+        });
+        
+        // Create a completely new object with explicit serialization
+        const serializedData = {
           tokenId: data.tokenId.toString(),
+          discoverer: data.discoverer,
           discoveryTimestamp: data.discoveryTimestamp.toString(),
-          rarityScore: data.rarityScore.toString(),
-          predictionScore: data.predictionScore.toString(),
+          assetType: Number(data.assetType),
+          rarity: Number(data.rarity),
+          risk: Number(data.risk),
+          rarityScore: Number(data.rarityScore), // Convert to number, not string
+          predictionScore: Number(data.predictionScore), // Convert to number
+          assetAddress: data.assetAddress,
+          assetName: data.assetName,
+          assetSymbol: data.assetSymbol,
           currentValue: data.currentValue.toString(),
           yieldRate: data.yieldRate.toString()
         };
+        
+        console.log(`Serialized data for token ${tokenId}:`, serializedData);
+        
+        return serializedData;
       },
       300
     );
 
+    // Final safety check
+    const finalCheck = JSON.stringify(cardData);
+    console.log(`Final JSON stringify successful for token ${tokenId}`);
+    
     res.json(cardData);
   } catch (error) {
     console.error('Contract data fetch error:', error);
@@ -109,7 +151,7 @@ router.get('/user/:address/cards', async (req, res) => {
         const ids = await contractService.getUserDiscoveryCards(address);
         return ids.map(id => id.toString());
       },
-      600 // 10 minutes cache
+      600
     );
 
     res.json({ cards: cardIds });
@@ -132,13 +174,14 @@ router.get('/user/:address/stats', async (req, res) => {
       cacheKey,
       async () => {
         const data = await contractService.getUserStats(address);
+        // Explicitly convert ALL BigInt properties
         return {
           totalScore: data.totalScore.toString(),
           discoveryCount: data.discoveryCount.toString(),
           averageRarity: data.averageRarity.toString()
         };
       },
-      300 // 5 minutes cache
+      300
     );
 
     res.json(stats);
@@ -190,6 +233,215 @@ router.get('/minting-fee', async (req, res) => {
     console.error('Minting fee fetch error:', error);
     res.status(500).json({ 
       error: 'Failed to fetch minting fee',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+router.post('/mint', async (req, res) => {
+  try {
+    const {
+      userAddress,
+      assetType,
+      rarity,
+      risk,
+      rarityScore,
+      predictionScore,
+      assetAddress,
+      assetName,
+      assetSymbol,
+      currentValue,
+      yieldRate,
+      tokenURI = ''
+    } = req.body;
+
+    // Validate required fields
+    if (!userAddress || assetType === undefined || rarity === undefined || 
+        risk === undefined || rarityScore === undefined || predictionScore === undefined ||
+        !assetAddress || !assetName || !assetSymbol || currentValue === undefined || 
+        yieldRate === undefined) {
+      return res.status(400).json({ 
+        error: 'Missing required fields',
+        required: [
+          'userAddress', 'assetType', 'rarity', 'risk', 'rarityScore', 
+          'predictionScore', 'assetAddress', 'assetName', 'assetSymbol', 
+          'currentValue', 'yieldRate'
+        ]
+      });
+    }
+
+    console.log('Minting request received:', {
+      userAddress,
+      assetType,
+      rarity,
+      risk,
+      rarityScore,
+      predictionScore,
+      assetAddress,
+      assetName,
+      assetSymbol,
+      currentValue: currentValue.toString(),
+      yieldRate: yieldRate.toString(),
+      tokenURI
+    });
+
+    const result = await contractService.mintDiscoveryCard(
+      userAddress,
+      Number(assetType),
+      Number(rarity),
+      Number(risk),
+      Number(rarityScore),
+      Number(predictionScore),
+      assetAddress,
+      assetName,
+      assetSymbol,
+      BigInt(currentValue),
+      BigInt(yieldRate),
+      tokenURI
+    );
+
+    console.log('Minting successful:', result);
+
+    // Invalidate relevant caches
+    cache.invalidate(`user-cards:${userAddress}`);
+    cache.invalidate(`user-stats:${userAddress}`);
+    cache.invalidate('leaderboard');
+
+    res.json({
+      success: true,
+      txHash: result.txHash,
+      tokenId: result.tokenId.toString(),
+      message: 'Asset successfully minted'
+    });
+  } catch (error) {
+    console.error('Minting error:', error);
+    res.status(500).json({ 
+      error: 'Failed to mint asset',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get leaderboard endpoint
+router.get('/leaderboard', async (req, res) => {
+  try {
+    const { limit = '10' } = req.query;
+    
+    const cacheKey = `leaderboard:${limit}`;
+    
+    const leaderboard = await cache.getOrSet(
+      cacheKey,
+      async () => {
+        const data = await contractService.getLeaderboard(Number(limit));
+        
+        // Explicitly convert ALL BigInt properties
+        return data.map(entry => ({
+          address: entry.address,
+          totalScore: entry.totalScore.toString(),
+          discoveryCount: entry.discoveryCount.toString(),
+          averageRarity: entry.averageRarity.toString(),
+          rank: entry.rank
+        }));
+      },
+      300 // Cache for 5 minutes
+    );
+
+    res.json(leaderboard);
+  } catch (error) {
+    console.error('Leaderboard fetch error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch leaderboard',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Get user rank endpoint
+router.get('/user/:address/rank', async (req, res) => {
+  try {
+    const { address } = req.params;
+    
+    const cacheKey = `user-rank:${address}`;
+    
+    const rank = await cache.getOrSet(
+      cacheKey,
+      async () => {
+        return await contractService.getUserRank(address);
+      },
+      300
+    );
+
+    res.json({ rank });
+  } catch (error) {
+    console.error('User rank fetch error:', error);
+    res.status(500).json({ 
+      error: 'Failed to fetch user rank',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
+// Batch mint endpoint
+router.post('/batch-mint', async (req, res) => {
+  try {
+    const { userAddress, assets } = req.body;
+
+    if (!userAddress || !Array.isArray(assets) || assets.length === 0) {
+      return res.status(400).json({ 
+        error: 'Missing required fields: userAddress and assets array'
+      });
+    }
+
+    console.log(`Batch minting ${assets.length} assets for ${userAddress}`);
+
+    const results = [];
+    
+    for (const asset of assets) {
+      try {
+        const result = await contractService.mintDiscoveryCard(
+          userAddress,
+          Number(asset.assetType),
+          Number(asset.rarity),
+          Number(asset.risk),
+          Number(asset.rarityScore),
+          Number(asset.predictionScore),
+          asset.assetAddress,
+          asset.assetName,
+          asset.assetSymbol,
+          BigInt(asset.currentValue),
+          BigInt(asset.yieldRate),
+          asset.tokenURI || ''
+        );
+        
+        results.push({
+          success: true,
+          assetAddress: asset.assetAddress,
+          txHash: result.txHash,
+          tokenId: result.tokenId.toString()
+        });
+      } catch (error) {
+        results.push({
+          success: false,
+          assetAddress: asset.assetAddress,
+          error: error instanceof Error ? error.message : 'Unknown error'
+        });
+      }
+    }
+
+    // Invalidate caches
+    cache.invalidate(`user-cards:${userAddress}`);
+    cache.invalidate(`user-stats:${userAddress}`);
+    cache.invalidate('leaderboard');
+
+    res.json({
+      success: true,
+      results,
+      message: `Processed ${assets.length} assets`
+    });
+  } catch (error) {
+    console.error('Batch minting error:', error);
+    res.status(500).json({ 
+      error: 'Failed to batch mint assets',
       details: error instanceof Error ? error.message : 'Unknown error'
     });
   }

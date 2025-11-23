@@ -1,10 +1,13 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
+import { useAccount } from 'wagmi';
 import { useUserCards, useUserStats, useDiscoveryCard } from '../hooks/useContracts';
-import { Card } from '../components/ui/Card';
+import { useMint } from '../hooks/useMint';
+import { useQuery } from '@tanstack/react-query';
 import { AssetCard } from '../components/assets/AssetCard';
+import { Card } from '../components/ui/Card';
 import { Button } from '../components/ui/Button';
-import { Trophy, Users, Star, Zap } from 'lucide-react';
+import { Trophy, Users, Star, Zap, Coins, Package, Crown, X } from 'lucide-react';
 import { RarityTier, RiskTier } from '../../../shared/src/types/rwa';
 
 interface DexProps {
@@ -12,10 +15,86 @@ interface DexProps {
 }
 
 export const Dex: React.FC<DexProps> = ({ onAssetSelect }) => {
+  const { address, isConnected } = useAccount();
   const { data: userCards = [], isLoading: cardsLoading } = useUserCards();
   const { data: userStats, isLoading: statsLoading } = useUserStats();
+  const { 
+    mintDiscoveryCard, 
+    removeFromCollection, 
+    isMinting,
+    loadCollection 
+  } = useMint();
 
-  const isLoading = cardsLoading || statsLoading;
+  const { data: collection = [], isLoading: collectionLoading } = useQuery({
+    queryKey: ['user-collection'],
+    queryFn: loadCollection,
+    enabled: !!address && !!loadCollection
+  });
+
+  const [activeTab, setActiveTab] = useState<'minted' | 'unminted' | 'contract'>('contract');
+
+  useEffect(() => {
+    if (address) {
+      loadCollection();
+    }
+  }, [address, loadCollection]);
+
+  const isLoading = cardsLoading || statsLoading || collectionLoading;
+  const unmintedAssets = collection.filter((asset: any) => !asset.isMinted);
+  const mintedAssets = collection.filter((asset: any) => asset.isMinted);
+
+  const handleMint = async (asset: any) => {
+    if (!asset.contractData) {
+      console.error('No contract data found for asset:', asset);
+      return;
+    }
+
+    try {
+      await mintDiscoveryCard({
+        assetAddress: asset.contractData.assetAddress,
+        assetName: asset.contractData.assetName,
+        assetSymbol: asset.contractData.assetSymbol,
+        assetType: asset.contractData.assetType,
+        rarityScore: asset.contractData.rarityScore,
+        riskTier: asset.contractData.risk,
+        predictionScore: asset.contractData.predictionScore,
+        currentValue: BigInt(asset.contractData.currentValue),
+        yieldRate: BigInt(asset.contractData.yieldRate),
+        tokenURI: asset.contractData.tokenURI
+      }, asset.id);
+    } catch (error) {
+      console.error('Minting failed:', error);
+    }
+  };
+
+  const handleRemove = async (assetId: string) => {
+    try {
+      await removeFromCollection(assetId);
+    } catch (error) {
+      console.error('Failed to remove asset:', error);
+    }
+  };
+
+  const totalCollectionValue = collection.reduce((sum: number, asset: any) => {
+    return sum + (asset.assetData.metrics?.liquidityDepth || 0);
+  }, 0);
+
+  if (!isConnected || !address) {
+    return (
+      <div className="max-w-2xl mx-auto text-center py-12">
+        <div className="w-24 h-24 mx-auto mb-6 bg-gray-200 rounded-full flex items-center justify-center">
+          <Users size={32} className="text-gray-400" />
+        </div>
+        <h2 className="text-2xl font-bold text-gray-600 mb-4">Connect Your Wallet</h2>
+        <p className="text-gray-500 mb-6">
+          Connect your wallet to view your AssetDexter collection.
+        </p>
+        <Button variant="primary" size="lg">
+          Connect Wallet
+        </Button>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -37,70 +116,144 @@ export const Dex: React.FC<DexProps> = ({ onAssetSelect }) => {
         <p className="text-gray-600">Your collection of discovered RWA assets</p>
       </motion.div>
 
-      {/* User Stats */}
+      {/* Collection Stats */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.1 }}
-        className="grid grid-cols-1 md:grid-cols-3 gap-6"
+        className="grid grid-cols-1 md:grid-cols-4 gap-6"
       >
-        <Card className="text-center">
+        <Card className="text-center p-6">
           <Trophy className="mx-auto text-yellow-500 mb-2" size={32} />
           <div className="text-2xl font-bold text-primary">
-            {userStats?.discoveryCount || 0}
+            {userStats?.discoveryCount || userCards.length}
           </div>
-          <div className="text-gray-600">Total Discoveries</div>
+          <div className="text-gray-600">Minted NFTs</div>
         </Card>
         
-        <Card className="text-center">
-          <Star className="mx-auto text-secondary mb-2" size={32} />
+        <Card className="text-center p-6">
+          <Package className="mx-auto text-blue-500 mb-2" size={32} />
           <div className="text-2xl font-bold text-primary">
-            {userStats?.averageRarity || 0}
+            {collection.length}
           </div>
-          <div className="text-gray-600">Avg Rarity Score</div>
+          <div className="text-gray-600">In Collection</div>
         </Card>
         
-        <Card className="text-center">
-          <Users className="mx-auto text-accent mb-2" size={32} />
+        <Card className="text-center p-6">
+          <Star className="mx-auto text-purple-500 mb-2" size={32} />
           <div className="text-2xl font-bold text-primary">
-            {userStats?.totalScore || 0}
+            {userStats?.averageRarity || 'N/A'}
           </div>
-          <div className="text-gray-600">Collection Score</div>
+          <div className="text-gray-600">Avg Rarity</div>
+        </Card>
+        
+        <Card className="text-center p-6">
+          <Users className="mx-auto text-green-500 mb-2" size={32} />
+          <div className="text-2xl font-bold text-primary">
+            ${(totalCollectionValue / 1000000).toFixed(1)}M
+          </div>
+          <div className="text-gray-600">Collection Value</div>
         </Card>
       </motion.div>
 
-      {/* Collection */}
+      {/* Collection Tabs */}
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay: 0.2 }}
       >
-        <div className="flex justify-between items-center mb-6">
-          <h2 className="text-2xl font-bold">My Collection</h2>
-          <span className="text-gray-600">
-            {userCards.length} {userCards.length === 1 ? 'card' : 'cards'}
-          </span>
+        <div className="flex space-x-1 mb-6 bg-gray-100 p-1 rounded-lg">
+          <Button
+            variant={activeTab === 'contract' ? 'primary' : 'secondary'}
+            onClick={() => setActiveTab('contract')}
+            className="flex-1"
+          >
+            <Crown className="w-4 h-4 mr-2" />
+            Minted NFTs ({userCards.length})
+          </Button>
+          <Button
+            variant={activeTab === 'unminted' ? 'primary' : 'secondary'}
+            onClick={() => setActiveTab('unminted')}
+            className="flex-1"
+          >
+            <Package className="w-4 h-4 mr-2" />
+            Ready to Mint ({unmintedAssets.length})
+          </Button>
+          <Button
+            variant={activeTab === 'minted' ? 'primary' : 'secondary'}
+            onClick={() => setActiveTab('minted')}
+            className="flex-1"
+          >
+            <Coins className="w-4 h-4 mr-2" />
+            Collection ({mintedAssets.length})
+          </Button>
         </div>
 
-        {userCards.length === 0 ? (
-          <Card className="text-center py-12">
-            <Zap size={48} className="mx-auto text-gray-400 mb-4" />
-            <h3 className="text-xl font-bold text-gray-600 mb-2">No cards yet!</h3>
-            <p className="text-gray-500 mb-4">Scan discovered assets to build your collection</p>
-            <Button onClick={() => window.location.hash = '#home'}>
-              Start Scanning
-            </Button>
-          </Card>
-        ) : (
+        {/* Content based on active tab */}
+        {activeTab === 'contract' && (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {userCards.map((cardId: string, index: number) => (
-              <DiscoveryCard 
+              <ContractCard 
                 key={cardId} 
                 tokenId={cardId} 
                 onSelect={onAssetSelect}
                 delay={index * 0.1}
               />
             ))}
+            {userCards.length === 0 && (
+              <div className="col-span-full text-center py-12">
+                <Zap size={48} className="mx-auto text-gray-400 mb-4" />
+                <h3 className="text-xl font-bold text-gray-600 mb-2">No minted NFTs yet!</h3>
+                <p className="text-gray-500">Scan assets and mint them to build your collection</p>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'unminted' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {unmintedAssets.map((asset: any, index: number) => (
+              <UnmintedCard 
+                key={asset.id}
+                asset={asset}
+                onMint={() => handleMint(asset)}
+                onRemove={() => handleRemove(asset.id)}
+                isMinting={isMinting}
+                delay={index * 0.1}
+              />
+            ))}
+            {unmintedAssets.length === 0 && (
+              <div className="col-span-full text-center py-12">
+                <Package size={48} className="mx-auto text-gray-400 mb-4" />
+                <h3 className="text-xl font-bold text-gray-600 mb-2">No assets ready to mint</h3>
+                <p className="text-gray-500">Scan assets and add them to your collection first</p>
+                <Button 
+                  className="mt-4"
+                  onClick={() => window.location.hash = '#home'}
+                >
+                  Start Scanning
+                </Button>
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === 'minted' && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            {mintedAssets.map((asset: any, index: number) => (
+              <MintedCard 
+                key={asset.id}
+                asset={asset}
+                delay={index * 0.1}
+              />
+            ))}
+            {mintedAssets.length === 0 && (
+              <div className="col-span-full text-center py-12">
+                <Coins size={48} className="mx-auto text-gray-400 mb-4" />
+                <h3 className="text-xl font-bold text-gray-600 mb-2">Collection is empty</h3>
+                <p className="text-gray-500">Assets you mint will appear here</p>
+              </div>
+            )}
           </div>
         )}
       </motion.div>
@@ -108,8 +261,8 @@ export const Dex: React.FC<DexProps> = ({ onAssetSelect }) => {
   );
 };
 
-// Helper component for discovery cards
-const DiscoveryCard: React.FC<{ tokenId: string; onSelect: (card: any) => void; delay: number }> = ({ 
+// Contract Cards using AssetCard component
+const ContractCard: React.FC<{ tokenId: string; onSelect: (card: any) => void; delay: number }> = ({ 
   tokenId, 
   onSelect, 
   delay 
@@ -123,10 +276,10 @@ const DiscoveryCard: React.FC<{ tokenId: string; onSelect: (card: any) => void; 
         animate={{ opacity: 1, y: 0 }}
         transition={{ delay }}
       >
-        <Card className="animate-pulse">
-          <div className="h-48 bg-gray-300 rounded-lg mb-4"></div>
+        <Card className="animate-pulse p-6">
+          <div className="h-16 w-16 mx-auto mb-4 bg-gray-300 rounded-full"></div>
           <div className="h-4 bg-gray-300 rounded mb-2"></div>
-          <div className="h-4 bg-gray-300 rounded w-2/3"></div>
+          <div className="h-4 bg-gray-300 rounded w-2/3 mx-auto"></div>
         </Card>
       </motion.div>
     );
@@ -134,28 +287,117 @@ const DiscoveryCard: React.FC<{ tokenId: string; onSelect: (card: any) => void; 
 
   if (!cardData) return null;
 
+  const assetCardProps = {
+    id: cardData.tokenId,
+    name: cardData.assetName,
+    symbol: cardData.assetSymbol,
+    type: getAssetTypeLabel(cardData.assetType),
+    rarity: cardData.rarity,
+    riskTier: cardData.risk,
+    movement: 'Bullish' as const,
+    confidence: Number(cardData.predictionScore) || 50
+  };
+
+  return (
+    <AssetCard 
+      asset={assetCardProps}
+      onClick={() => onSelect(cardData)}
+    />
+  );
+};
+
+// Helper function for asset type
+function getAssetTypeLabel(assetType: number): string {
+  const types = [
+    'Tokenized Treasury',
+    'Real Estate', 
+    'Art',
+    'Luxury Goods',
+    'Private Credit'
+  ];
+  return types[assetType] || 'Tokenized Asset';
+}
+
+// Unminted Card Component
+const UnmintedCard: React.FC<{ 
+  asset: any; 
+  onMint: () => void;
+  onRemove: () => void;
+  isMinting: boolean;
+  delay: number;
+}> = ({ asset, onMint, onRemove, isMinting, delay }) => {
+  const data = asset.assetData;
+  
+  const assetCardProps = {
+    id: data.assetId,
+    name: data.name,
+    symbol: data.symbol,
+    type: getAssetTypeLabel(data.assetType || 0),
+    rarity: data.rarityTier || RarityTier.UNCOMMON,
+    riskTier: data.riskTier || RiskTier.MEDIUM,
+    movement: data.marketPrediction || 'Neutral',
+    confidence: data.predictionConfidence || 50
+  };
+
   return (
     <motion.div
       initial={{ opacity: 0, y: 20 }}
       animate={{ opacity: 1, y: 0 }}
       transition={{ delay }}
-      whileHover={{ scale: 1.05 }}
-      className="cursor-pointer"
-      onClick={() => onSelect(cardData)}
     >
-      <Card hover>
-        <div className="text-center">
-          <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center text-white font-bold">
-            {cardData.assetSymbol?.slice(0, 3) || 'RWA'}
-          </div>
-          <h3 className="font-bold text-lg mb-2">{cardData.assetName}</h3>
-          <p className="text-gray-600 text-sm mb-4">{cardData.assetSymbol}</p>
-          <div className="flex justify-between text-sm">
-            <span>Rarity:</span>
-            <span className="font-bold">{cardData.rarityScore}/100</span>
-          </div>
+      <div className="relative">
+        <AssetCard asset={assetCardProps} />
+        <div className="absolute top-2 right-2 flex gap-1">
+          <Button 
+            onClick={onRemove}
+            variant="secondary"
+            size="sm"
+            className="!p-1 !h-6"
+            icon={X}
+          />
+          <Button 
+            onClick={onMint}
+            loading={isMinting}
+            variant="primary"
+            size="sm"
+            className="!p-1 !h-6"
+            icon={Coins}
+          />
         </div>
-      </Card>
+      </div>
+    </motion.div>
+  );
+};
+
+// Minted Card Component
+const MintedCard: React.FC<{ 
+  asset: any;
+  delay: number;
+}> = ({ asset, delay }) => {
+  const data = asset.assetData;
+  
+  const assetCardProps = {
+    id: data.assetId,
+    name: data.name,
+    symbol: data.symbol,
+    type: getAssetTypeLabel(data.assetType || 0),
+    rarity: data.rarityTier || RarityTier.UNCOMMON,
+    riskTier: data.riskTier || RiskTier.MEDIUM,
+    movement: data.marketPrediction || 'Neutral',
+    confidence: data.predictionConfidence || 50
+  };
+
+  return (
+    <motion.div
+      initial={{ opacity: 0, y: 20 }}
+      animate={{ opacity: 1, y: 0 }}
+      transition={{ delay }}
+      className="relative"
+    >
+      <AssetCard asset={assetCardProps} />
+      <div className="absolute top-2 left-2 bg-green-500 text-white text-xs font-bold px-2 py-1 rounded-full">
+        MINTED
+      </div>
     </motion.div>
   );
 };

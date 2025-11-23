@@ -1,6 +1,6 @@
 import React from 'react';
 import { createConfig, http, WagmiProvider } from 'wagmi';
-import { baseSepolia } from 'wagmi/chains';
+import { lineaSepolia } from 'wagmi/chains';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { injected, walletConnect } from 'wagmi/connectors';
 
@@ -8,7 +8,7 @@ import { injected, walletConnect } from 'wagmi/connectors';
 const walletConnectProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
 
 const config = createConfig({
-  chains: [baseSepolia],
+  chains: [lineaSepolia],
   connectors: [
     injected(),
     walletConnect({
@@ -17,7 +17,7 @@ const config = createConfig({
     }),
   ],
   transports: {
-    [baseSepolia.id]: http('https://sepolia.base.org'),
+    [lineaSepolia.id]: http('https://linea-sepolia-rpc.publicnode.com'), // Linea Sepolia RPC
   },
 });
 

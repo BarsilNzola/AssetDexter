@@ -53,13 +53,19 @@ export const useUserStats = () => {
     queryFn: async () => {
       if (!address) return null;
 
+      console.log(`Fetching user stats for address: ${address}`);
+      
       const response = await fetch(`${API_ENDPOINTS.CONTRACTS}/user/${address}/stats`);
       
       if (!response.ok) {
+        console.error(`Failed to fetch user stats: ${response.status} ${response.statusText}`);
         throw new Error('Failed to fetch user stats');
       }
 
-      return response.json();
+      const data = await response.json();
+      console.log('User stats response:', data);
+      
+      return data;
     },
     enabled: !!address,
   });

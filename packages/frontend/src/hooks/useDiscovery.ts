@@ -18,13 +18,33 @@ interface DiscoveryParams {
   tokenURI: string;
 }
 
-export const useDiscoverAsset = () => {
+interface DiscoveryResult {
+  total: number;
+  valid: number;
+  saved: number;
+  failed: number;
+  transactionHashes: string[];
+  assets: DiscoveryParams[];
+}
+
+export const useDiscovery = () => {
   const { address } = useAccount();
   const { writeContract, data: hash, error, isPending } = useWriteContract();
   const { isLoading: isConfirming, isSuccess: isConfirmed } = useWaitForTransactionReceipt({ 
     hash
   });
+  
+  const [isDiscovering, setIsDiscovering] = useState(false);
+  const [results, setResults] = useState<DiscoveryResult>({ 
+    total: 0, 
+    valid: 0, 
+    saved: 0, 
+    failed: 0, 
+    transactionHashes: [], 
+    assets: [] 
+  });
 
+  // Single asset discovery with better error handling
   const discoverAsset = useCallback(async (params: DiscoveryParams): Promise<string> => {
     if (!address) {
       throw new Error('No wallet connected');
@@ -38,100 +58,69 @@ export const useDiscoverAsset = () => {
     console.log('Attempting to discover asset:', {
       name: params.assetName,
       address: params.assetAddress,
-      symbol: params.assetSymbol,
-      type: params.assetType,
-      contract: CONTRACT_ADDRESSES.DISCOVERY_CARD
+      symbol: params.assetSymbol
     });
 
-    // Ensure currentValue and yieldRate are BigInt
+    // Convert values to BigInt if needed
     const processedParams = {
       ...params,
-      currentValue: typeof params.currentValue === 'string' ? 
-        BigInt(params.currentValue) : params.currentValue,
-      yieldRate: typeof params.yieldRate === 'string' ? 
-        BigInt(params.yieldRate) : params.yieldRate
+      currentValue: BigInt(params.currentValue),
+      yieldRate: BigInt(params.yieldRate)
     };
 
     return new Promise((resolve, reject) => {
-      // Set up a one-time listener for the next hash
-      let hashResolved = false;
-      
-      const checkHash = () => {
-        if (hash && !hashResolved) {
-          hashResolved = true;
-          console.log('Transaction submitted:', hash);
-          resolve(hash);
-          return true;
-        }
-        return false;
-      };
-
-      // Check immediately in case hash is already set
-      if (checkHash()) {
-        return;
-      }
-
-      // Set up interval to check for hash
-      const intervalId = setInterval(() => {
-        if (checkHash()) {
-          clearInterval(intervalId);
-        }
-      }, 100);
-
-      // Timeout after 30 seconds
-      const timeoutId = setTimeout(() => {
-        clearInterval(intervalId);
-        if (!hashResolved) {
-          hashResolved = true;
-          reject(new Error('Transaction submission timeout - no hash received'));
-        }
-      }, 30000);
-
       try {
-        // Trigger the contract write
         writeContract({
           address: CONTRACT_ADDRESSES.DISCOVERY_CARD as `0x${string}`,
           abi: RWADiscoveryCardABI.abi,
           functionName: 'discoverAsset',
           args: [
-            processedParams.assetAddress,
-            processedParams.assetName,
-            processedParams.assetSymbol,
-            processedParams.assetType,
-            processedParams.rarity,
-            processedParams.risk,
-            processedParams.rarityScore,
-            processedParams.predictionScore,
-            processedParams.currentValue,
-            processedParams.yieldRate,
-            processedParams.tokenURI
+            address,                          
+            processedParams.assetType,        
+            processedParams.rarity,           
+            processedParams.risk,             
+            processedParams.rarityScore,      
+            processedParams.predictionScore,  
+            processedParams.assetAddress,     
+            processedParams.assetName,        
+            processedParams.assetSymbol,      
+            processedParams.currentValue,     
+            processedParams.yieldRate,        
+            processedParams.tokenURI          
           ],
+        }, {
+          onSuccess: (hash) => {
+            console.log('Transaction submitted successfully:', hash);
+            resolve(hash);
+          },
+          onError: (error) => {
+            console.error('Transaction failed in writeContract:', error);
+            // Provide more specific error messages
+            let errorMessage = 'Transaction failed';
+            if (error.message.includes('user rejected')) {
+              errorMessage = 'Transaction rejected by user';
+            } else if (error.message.includes('insufficient funds')) {
+              errorMessage = 'Insufficient LineaETH for gas fees';
+            } else if (error.message.includes('revert')) {
+              errorMessage = 'Contract execution reverted - check asset parameters';
+            } else if (error.message.includes('nonce')) {
+              errorMessage = 'Transaction nonce issue - try again';
+            }
+            reject(new Error(errorMessage));
+          }
         });
+
       } catch (error) {
-        clearInterval(intervalId);
-        clearTimeout(timeoutId);
-        console.error('Transaction failed:', error);
+        console.error('Error in discoverAsset promise:', error);
         reject(error instanceof Error ? error : new Error('Unknown transaction error'));
       }
     });
-  }, [address, writeContract, hash]);
+  }, [address, writeContract]);
 
-  return {
-    discoverAsset,
-    isPending,
-    isConfirming,
-    isConfirmed,
-    error,
-    hash
-  };
-};
-
-export const useAutoDiscovery = () => {
-  const [isDiscovering, setIsDiscovering] = useState(false);
-  const { discoverAsset } = useDiscoverAsset();
-
-  const discoverFromSources = async () => {
+  // Batch discovery from external sources
+  const discoverFromSources = async (): Promise<DiscoveryResult> => {
     setIsDiscovering(true);
+    
     try {
       console.log('Starting auto-discovery from sources...');
       
@@ -148,17 +137,14 @@ export const useAutoDiscovery = () => {
 
       const { assets } = await response.json();
       
-      console.log(`Discovered ${assets.length} assets from sources, now saving to contract...`);
+      console.log(`Discovered ${assets.length} assets from sources`);
       
-      let savedCount = 0;
-      let errorCount = 0;
-      const validAssets = [];
-      const transactionHashes: string[] = [];
+      const validAssets: DiscoveryParams[] = [];
 
       // Map backend fields to contract expected fields
-      for (const asset of assets.slice(0, 5)) { // TEST: Only process first 5 assets
+      for (const asset of assets.slice(0, 5)) {
         if (asset.address && asset.name && asset.symbol) {
-          const mappedAsset = {
+          const mappedAsset: DiscoveryParams = {
             assetAddress: asset.address,
             assetName: asset.name,
             assetSymbol: asset.symbol,
@@ -181,52 +167,19 @@ export const useAutoDiscovery = () => {
         }
       }
 
-      console.log(`TEST: Processing first ${validAssets.length} valid assets out of ${assets.length} total`);
-
-      // Save each valid asset to the contract
-      for (const asset of validAssets) {
-        try {
-          console.log('Processing asset:', {
-            name: asset.assetName,
-            address: asset.assetAddress,
-            symbol: asset.assetSymbol
-          });
-
-          const txHash = await discoverAsset(asset);
-          transactionHashes.push(txHash);
-          savedCount++;
-          console.log(`Transaction submitted for: ${asset.assetName} (${txHash})`);
-
-          // Wait longer between transactions to avoid nonce issues
-          await new Promise(resolve => setTimeout(resolve, 3000));
-          
-        } catch (error) {
-          errorCount++;
-          const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-          console.error(`Failed to save asset ${asset.assetName}:`, errorMessage);
-          
-          // If we get a timeout, stop the process entirely
-          if (errorMessage.includes('timeout')) {
-            console.error('Stopping auto-discovery due to transaction timeout');
-            break;
-          }
-        }
-
-        // Add small delay to avoid rate limiting
-        await new Promise(resolve => setTimeout(resolve, 1000));
-      }
-
-      console.log(`Auto-discovery completed: ${savedCount} saved, ${errorCount} failed`);
-      console.log('Transaction hashes:', transactionHashes);
-      
-      return {
+      const discoveryResult = {
         total: assets.length,
         valid: validAssets.length,
-        saved: savedCount,
-        failed: errorCount,
-        transactionHashes,
+        saved: 0,
+        failed: 0,
+        transactionHashes: [],
         assets: validAssets
       };
+
+      setResults(discoveryResult);
+      console.log(`Found ${validAssets.length} valid assets out of ${assets.length} total`);
+      
+      return discoveryResult;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       console.error('Auto-discovery failed:', errorMessage);
@@ -236,8 +189,106 @@ export const useAutoDiscovery = () => {
     }
   };
 
+  // Batch save discovered assets to contract with better transaction sequencing
+  const saveDiscoveredAssets = async (assets: DiscoveryParams[]): Promise<DiscoveryResult> => {
+    setIsDiscovering(true);
+    
+    let savedCount = 0;
+    let errorCount = 0;
+    const transactionHashes: string[] = [];
+
+    try {
+      console.log(`Saving ${assets.length} assets to contract...`);
+
+      // Process assets sequentially with proper delays
+      for (let i = 0; i < assets.length; i++) {
+        const asset = assets[i];
+        
+        try {
+          console.log(`Processing asset ${i + 1}/${assets.length}:`, {
+            name: asset.assetName,
+            address: asset.assetAddress,
+            symbol: asset.assetSymbol
+          });
+
+          // Add increasing delay between transactions to avoid nonce conflicts
+          if (i > 0) {
+            await new Promise(resolve => setTimeout(resolve, 3000 + (i * 1000))); // 3s, 4s, 5s, etc.
+          }
+
+          const txHash = await discoverAsset(asset);
+          transactionHashes.push(txHash);
+          savedCount++;
+          
+          // Update results state
+          setResults(prev => ({ 
+            ...prev, 
+            saved: savedCount,
+            failed: errorCount,
+            transactionHashes 
+          }));
+          
+          console.log(`Transaction submitted for: ${asset.assetName} (${txHash})`);
+
+          // Wait a bit for the transaction to be processed
+          await new Promise(resolve => setTimeout(resolve, 2000));
+          
+        } catch (error) {
+          errorCount++;
+          const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+          console.error(`Failed to save asset ${asset.assetName}:`, errorMessage);
+          
+          // Update results state
+          setResults(prev => ({ ...prev, failed: errorCount }));
+          
+          // If it's a nonce or replacement error, we should stop
+          if (errorMessage.includes('nonce') || errorMessage.includes('replaced') || errorMessage.includes('dropped')) {
+            console.error('Stopping batch due to transaction sequencing error');
+            break;
+          }
+          
+          // For other errors, continue with next asset
+          console.log('Skipping to next asset due to transaction failure');
+        }
+      }
+
+      const finalResults = {
+        total: assets.length,
+        valid: assets.length,
+        saved: savedCount,
+        failed: errorCount,
+        transactionHashes,
+        assets
+      };
+
+      setResults(finalResults);
+      console.log(`Batch save completed: ${savedCount} saved, ${errorCount} failed`);
+      
+      return finalResults;
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      console.error('Batch save failed:', errorMessage);
+      throw error;
+    } finally {
+      setIsDiscovering(false);
+    }
+  };
+
   return {
+    // Single asset operations
+    discoverAsset,
+    
+    // Batch operations
     discoverFromSources,
-    isDiscovering
+    saveDiscoveredAssets,
+    
+    // State
+    isPending,
+    isConfirming,
+    isConfirmed,
+    isDiscovering,
+    results,
+    error,
+    hash
   };
 };

@@ -72,7 +72,33 @@ export class DiscoveryService {
       
       const result = topPools.map(pool => {
         const chainId = this.getChainId(pool.chain);
-        console.log(`Creating discovery asset: ${pool.project} (${pool.symbol}) on ${pool.chain} -> chainId: ${chainId}, TVL: ${pool.tvl}`);
+        
+        // Much more strict rarity score calculation
+        const tvl = pool.tvl || 0;
+        const apy = pool.apy || 0;
+        
+        // TVL Score: 0-50 points (needs $200M TVL for max)
+        const tvlScore = Math.min(50, Math.floor(tvl / 4000000));
+        
+        // APY Score: 0-25 points (needs 25% APY for max)
+        const apyScore = Math.min(25, Math.floor(apy * 100));
+        
+        // Project uniqueness score: 0-25 points
+        const uniquenessScore = this.calculatePoolUniqueness(pool);
+        
+        const rarityScore = Math.min(100, tvlScore + apyScore + uniquenessScore);
+        
+        // More realistic prediction score
+        const predictionScore = Math.min(100, Math.floor(
+          (apy * 80) + // APY contribution (10% APY = 8 points)
+          Math.min(20, tvl / 50000000) // TVL contribution ($50M TVL = 20 points)
+        ));
+        
+        // Better rarity and risk tier calculations
+        const rarityTier = this.calculateRarityTier(rarityScore);
+        const riskTier = this.calculateRiskTier(tvl, apy);
+        
+        console.log(`Creating discovery asset: ${pool.project} - Rarity: ${rarityScore}, Prediction: ${predictionScore}, TVL: $${tvl.toLocaleString()}, APY: ${(apy * 100).toFixed(2)}%`);
         
         return {
           address: this.generateAddressFromId(pool.id),
@@ -80,12 +106,12 @@ export class DiscoveryService {
           name: `${pool.project} ${pool.symbol} Pool`,
           symbol: pool.symbol || pool.project.substring(0, 4).toUpperCase(),
           assetType: AssetType.TOKENIZED_TREASURY,
-          rarity: RarityTier.UNCOMMON,
-          risk: RiskTier.MEDIUM,
-          rarityScore: Math.min(100, Math.floor((pool.tvl || 0) / 10000000) + 40), // Adjusted calculation
-          predictionScore: Math.min(100, Math.floor((pool.apy || 0) * 5) + 50), // Adjusted calculation
-          currentValue: BigInt(Math.floor(pool.tvl || 1000000)), // Ensure minimum value
-          yieldRate: BigInt(Math.floor((pool.apy || 0.05) * 10000)), // Convert to basis points
+          rarity: rarityTier,
+          risk: riskTier,
+          rarityScore: rarityScore,
+          predictionScore: predictionScore,
+          currentValue: BigInt(Math.floor(tvl || 1000000)),
+          yieldRate: BigInt(Math.floor(apy * 10000)),
           tokenURI: this.generateTokenURI(pool.project, pool.symbol || pool.project, AssetType.TOKENIZED_TREASURY)
         };
       });
@@ -94,8 +120,49 @@ export class DiscoveryService {
       return result;
     } catch (error) {
       console.error('Error discovering from DeFi Llama:', error);
-      return []; // Return empty array on error
+      return [];
     }
+  }
+  
+  // helper methods
+  private calculatePoolUniqueness(pool: any): number {
+    let score = 0;
+    
+    // Rare project bonus
+    const rareProjects = ['ondo', 'maple', 'centrifuge', 'goldfinch', 'truefi'];
+    if (rareProjects.some(proj => pool.project?.toLowerCase().includes(proj))) {
+      score += 15;
+    }
+    
+    // Rare chain bonus
+    const rareChains = ['Linea', 'Base', 'Avalanche', 'Arbitrum'];
+    if (rareChains.includes(pool.chain)) {
+      score += 10;
+    }
+    
+    // Established project bonus
+    const establishedProjects = ['aave', 'compound', 'morpho'];
+    if (establishedProjects.some(proj => pool.project?.toLowerCase().includes(proj))) {
+      score += 5;
+    }
+    
+    return Math.min(25, score);
+  }
+  
+  private calculateRarityTier(score: number): RarityTier {
+    if (score >= 85) return RarityTier.LEGENDARY;
+    if (score >= 70) return RarityTier.EPIC;
+    if (score >= 55) return RarityTier.RARE;
+    if (score >= 40) return RarityTier.UNCOMMON;
+    return RarityTier.COMMON;
+  }
+  
+  private calculateRiskTier(tvl: number, apy: number): RiskTier {
+    // Higher TVL = lower risk, very high APY = higher risk
+    if (tvl > 50000000 && apy < 0.15) return RiskTier.LOW; // $50M+ TVL, reasonable APY
+    if (tvl > 10000000 && apy < 0.25) return RiskTier.MEDIUM; // $10M+ TVL
+    if (tvl > 1000000) return RiskTier.HIGH; // $1M+ TVL
+    return RiskTier.SPECULATIVE; // Low TVL or very high APY
   }
 
   private async discoverFromCreatorBid(): Promise<DiscoveredAsset[]> {
@@ -110,23 +177,37 @@ export class DiscoveryService {
       
       console.log(`Processing ${artAssets.length} art assets from CreatorBid`);
       
-      return artAssets.map(art => ({
-        address: this.generateAddressFromId(art.id),
-        chainId: 1, // Ethereum mainnet
-        name: art.title,
-        symbol: `ART-${art.title.substring(0, 3).toUpperCase()}`,
-        assetType: AssetType.ART,
-        rarity: RarityTier.RARE,
-        risk: RiskTier.SPECULATIVE,
-        rarityScore: Math.min(100, Math.floor((art.currentBid || 1) * 10) + 40), // Adjusted calculation
-        predictionScore: Math.min(100, Math.floor(((art.estimate?.high || art.currentBid * 1.5) / (art.currentBid || 1) - 1) * 50) + 50),
-        currentValue: BigInt(Math.floor((art.currentBid || 1) * 1000000)),
-        yieldRate: BigInt(Math.floor(((art.estimate?.high || art.currentBid * 1.5) / (art.currentBid || 1) - 1) * 10000)),
-        tokenURI: this.generateTokenURI(art.title, `ART-${art.title.substring(0, 3).toUpperCase()}`, AssetType.ART)
-      }));
+      return artAssets.map(art => {
+        const currentBid = art.currentBid || 1;
+        const estimateHigh = art.estimate?.high || currentBid * 1.5;
+        const potentialReturn = (estimateHigh - currentBid) / currentBid;
+        
+        // More realistic art rarity scoring
+        const bidScore = Math.min(40, Math.floor(currentBid / 10000)); // $10K bid = 40 points
+        const artistScore = art.artist ? 20 : 0; // Known artist bonus
+        const provenanceScore = art.provenance?.length > 2 ? 15 : 0; // Good provenance
+        
+        const rarityScore = Math.min(100, bidScore + artistScore + provenanceScore + 25);
+        const predictionScore = Math.min(100, Math.floor(potentialReturn * 100) + 30);
+        
+        return {
+          address: this.generateAddressFromId(art.id),
+          chainId: 1,
+          name: art.title,
+          symbol: `ART-${art.title.substring(0, 3).toUpperCase()}`,
+          assetType: AssetType.ART,
+          rarity: this.calculateRarityTier(rarityScore),
+          risk: RiskTier.SPECULATIVE, // Art is always speculative
+          rarityScore: rarityScore,
+          predictionScore: predictionScore,
+          currentValue: BigInt(Math.floor(currentBid * 1000000)),
+          yieldRate: BigInt(Math.floor(potentialReturn * 10000)),
+          tokenURI: this.generateTokenURI(art.title, `ART-${art.title.substring(0, 3).toUpperCase()}`, AssetType.ART)
+        };
+      });
     } catch (error) {
       console.error('Error discovering from CreatorBid:', error);
-      return []; // Return empty array on error
+      return [];
     }
   }
 
@@ -243,8 +324,10 @@ export class DiscoveryService {
       
       const discoveredAssets: DiscoveredAsset[] = [];
       
-      for (let i = 0; i < Math.min(Number(totalDiscoveries), 50); i++) {
+      // Start from token ID 1, not 0
+      for (let i = 1; i <= Math.min(Number(totalDiscoveries), 50); i++) {
         try {
+          console.log(`Fetching discovery token ${i}...`);
           const discovery = await contract.getDiscoveryCard(i);
           
           discoveredAssets.push({
@@ -261,8 +344,12 @@ export class DiscoveryService {
             yieldRate: discovery.yieldRate,
             tokenURI: discovery.tokenURI
           });
+          
+          console.log(`Successfully fetched: ${discovery.assetName}`);
         } catch (error) {
           console.warn(`Failed to fetch discovery ${i}:`, error);
+          // Continue with next token instead of breaking
+          continue;
         }
       }
       
@@ -272,7 +359,7 @@ export class DiscoveryService {
       return [];
     }
   }
-
+  
   async getAllDiscoveredAssets(): Promise<any[]> {
     const discoveryContracts = [
       { address: '0x6c49D2b8d7B200777F819d3aC5cb740D68b5E4fA', chainId: 59141 },
@@ -286,9 +373,20 @@ export class DiscoveryService {
       
       // Convert BigInt values to strings for serialization
       const serializedAssets = assets.map(asset => ({
-        ...asset,
+        address: asset.address,
+        chainId: asset.chainId,
+        name: asset.name,
+        symbol: asset.symbol,
+        // Convert any remaining BigInt fields
         currentValue: asset.currentValue.toString(),
-        yieldRate: asset.yieldRate.toString()
+        yieldRate: asset.yieldRate.toString(),
+        // Include other fields as needed
+        assetType: asset.assetType,
+        rarity: asset.rarity,
+        risk: asset.risk,
+        rarityScore: asset.rarityScore,
+        predictionScore: asset.predictionScore,
+        tokenURI: asset.tokenURI
       }));
       
       allAssets.push(...serializedAssets);
