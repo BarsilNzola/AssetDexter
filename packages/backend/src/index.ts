@@ -140,14 +140,22 @@ app.get('/api/test', async (req, res) => {
 });
 
 app.get('/config.js', (req, res) => {
+  console.log('Config route called, env vars:', {
+    lighthouse: !!process.env.VITE_LIGHTHOUSE_API_KEY,
+    walletconnect: !!process.env.VITE_WALLETCONNECT_PROJECT_ID,
+    admin: !!process.env.VITE_ADMIN_ADDRESS
+  });
+
   res.set('Content-Type', 'application/javascript');
-  res.send(`
+  const config = `
     window.APP_CONFIG = {
       VITE_LIGHTHOUSE_API_KEY: '${process.env.VITE_LIGHTHOUSE_API_KEY || ''}',
       VITE_WALLETCONNECT_PROJECT_ID: '${process.env.VITE_WALLETCONNECT_PROJECT_ID || ''}',
       VITE_ADMIN_ADDRESS: '${process.env.VITE_ADMIN_ADDRESS || ''}'
     };
-  `);
+    console.log('Config loaded:', window.APP_CONFIG);
+  `;
+  res.send(config);
 });
 
 // Health check
