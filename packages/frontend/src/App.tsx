@@ -5,8 +5,8 @@ import { Home } from './pages/Home';
 import { Dex } from './pages/Dex';
 import { Asset } from './pages/Asset';
 import { Profile } from './pages/Profile';
-import { Web3Provider } from './lib/providers/Web3Provider';
-import { QueryProvider } from './lib/providers/QueryProvider';
+import { Web3Provider } from './lib/Web3Provider';
+import { QueryProvider } from './lib/QueryProvider';
 
 type Page = 'home' | 'dex' | 'asset' | 'profile';
 
