@@ -30,19 +30,19 @@ function AppContent() {
         window.location.hash = page;
       }
     };
+
+    // Handle asset selection from any page
+    const handleAssetSelect = (asset: any) => {
+      setSelectedAsset(asset);
+      window.location.hash = `asset/${asset.id}`;
+    };
   
     const renderPage = () => {
       switch (currentPage) {
         case 'home':
-          return <Home onAssetSelect={(asset) => {
-            setSelectedAsset(asset);
-            window.location.hash = `asset/${asset.id}`;
-          }} />;
+          return <Home />;
         case 'dex':
-          return <Dex onAssetSelect={(asset) => {
-            setSelectedAsset(asset);
-            window.location.hash = `asset/${asset.id}`;
-          }} />;
+          return <Dex onAssetSelect={handleAssetSelect} />;
         case 'asset':
           return <Asset asset={selectedAsset} onBack={() => {
             setCurrentPage('home');
@@ -51,10 +51,7 @@ function AppContent() {
         case 'profile':
           return <Profile />;
         default:
-          return <Home onAssetSelect={(asset) => {
-            setSelectedAsset(asset);
-            window.location.hash = `asset/${asset.id}`;
-          }} />;
+          return <Home />;
       }
     };
   
