@@ -43,7 +43,6 @@ export const Dex: React.FC<DexProps> = ({ onAssetSelect }) => {
   
   // Separate assets by status
   const unmintedAssets = collection.filter((asset: any) => !asset.isMinted);
-  const mintedAssets = collection.filter((asset: any) => asset.isMinted);
 
   const handleMint = async (asset: any) => {
     if (!asset.contractData) {

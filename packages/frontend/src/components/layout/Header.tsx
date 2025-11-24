@@ -3,7 +3,7 @@ import { useAccount } from 'wagmi';
 import { motion } from 'framer-motion';
 import { Button } from '../ui/Button';
 import { ConnectWallet } from '../wallet/ConnectWallet'; 
-import { LogOut, User, Scan, BookOpen } from 'lucide-react';
+import { User, Scan, BookOpen } from 'lucide-react';
 
 interface HeaderProps {
   currentPage: string;

@@ -10,10 +10,6 @@ import { useScanner } from '../hooks/useScanner';
 import { useMint } from '../hooks/useMint';
 import { RWAAnalysis, RWA, AssetType, RarityTier, RiskTier } from '../../../shared/src/types/rwa';
 
-interface HomeProps {
-  onAssetSelect?: (asset: any) => void;
-}
-
 interface ScannedAsset {
   assetId: string;
   rarityScore: number;
@@ -66,7 +62,7 @@ const getAssetTypeEnum = (name: string): AssetType => {
   return AssetType.TOKENIZED_TREASURY;
 };
 
-export const Home: React.FC<HomeProps> = ({ onAssetSelect }) => {
+export const Home: React.FC = () => {
   const [scannedAssets, setScannedAssets] = useState<ScannedAsset[]>([]);
   const [selectedAsset, setSelectedAsset] = useState<ScannedAsset | null>(null);
   const [showDetails, setShowDetails] = useState(false);

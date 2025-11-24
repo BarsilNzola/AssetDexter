@@ -1,36 +1,30 @@
-FROM node:18-alpine AS backend
+FROM node:18-alpine AS base
 
 WORKDIR /app
+
+# Copy package files
 COPY package*.json ./
-COPY packages/backend/package.json ./packages/backend/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/contracts/package.json ./packages/contracts/
+COPY packages/backend/package.json ./packages/backend/
+COPY packages/frontend/package.json ./packages/frontend/
 
-# Install ALL dependencies (including dev for TypeScript)
-RUN npm ci --workspace=packages/backend --workspace=packages/shared --workspace=packages/contracts
+# Install all dependencies
+RUN npm ci
 
-# Copy backend source
+# Build shared package first (since backend depends on it)
+COPY packages/shared/ ./packages/shared/
+WORKDIR /app/packages/shared
+RUN npm run build
+
+# Build backend
 COPY packages/backend/ ./packages/backend/
-COPY packages/shared/ ./packages/shared/ 
 COPY packages/contracts/ ./packages/contracts/
-
 WORKDIR /app/packages/backend
 RUN npm run build
 
-FROM node:18-alpine AS frontend
-
-WORKDIR /app
-COPY package*.json ./
-COPY packages/frontend/package.json ./packages/frontend/
-COPY packages/shared/package.json ./packages/shared/
-
-# Install frontend dependencies
-RUN npm ci --workspace=packages/frontend --workspace=packages/shared
-
-# Copy frontend source
+# Build frontend
 COPY packages/frontend/ ./packages/frontend/
-COPY packages/shared/ ./packages/shared/
-
 WORKDIR /app/packages/frontend
 RUN npm run build
 
@@ -39,19 +33,22 @@ FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy backend
-COPY --from=backend /app/packages/backend/dist ./backend/dist
-COPY --from=backend /app/packages/backend/package.json ./backend/
+# Copy built backend
+COPY --from=base /app/packages/backend/dist ./backend/dist
+COPY --from=base /app/packages/backend/package.json ./backend/
 
-# Copy frontend build
-COPY --from=frontend /app/packages/frontend/dist ./backend/dist
+# Copy built frontend to backend public directory
+COPY --from=base /app/packages/frontend/dist ./backend/dist
 
-# Copy shared packages
-COPY --from=backend /app/packages/shared ./packages/shared/
-COPY --from=backend /app/packages/contracts ./packages/contracts/
+# Copy built shared package
+COPY --from=base /app/packages/shared/dist ./packages/shared/dist
+COPY --from=base /app/packages/shared/package.json ./packages/shared/
 
-# Copy only production node_modules from backend
-COPY --from=backend /app/node_modules ./node_modules
+# Copy contracts
+COPY --from=base /app/packages/contracts ./packages/contracts/
+
+# Copy production node_modules
+COPY --from=base /app/node_modules ./node_modules
 
 WORKDIR /app/backend
 

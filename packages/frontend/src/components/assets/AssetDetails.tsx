@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { motion } from 'framer-motion';
 import { RWA, RWAAnalysis, RarityTier, RiskTier } from '../../../../shared/src/types/rwa';
 import { Button } from '../ui/Button';
 import { useMint } from '../../hooks/useMint';
 import { useAccount } from 'wagmi';
-import { ExternalLink, Users, DollarSign, TrendingUp, Shield, Plus, Package } from 'lucide-react';
+import { Users, DollarSign, TrendingUp, Shield, Plus, Package } from 'lucide-react';
 
 interface AssetDetailsProps {
   asset: RWA;
@@ -98,12 +97,14 @@ export const AssetDetails: React.FC<AssetDetailsProps> = ({
         assetAddress: asset.address,
         assetName: asset.name,
         assetSymbol: asset.symbol,
-        assetType: 0, // TOKENIZED_TREASURY - you'll need to map this
+        assetType: 0, 
+        rarity: analysis.rarityTier as number, 
+        risk: analysis.riskTier as number, 
         rarityScore: Math.round(analysis.rarityScore),
-        riskTier: analysis.riskTier as number,
         predictionScore: Math.round(analysis.predictionConfidence),
         currentValue: BigInt(Math.round(asset.price * 100)), // Convert to cents/wei
         yieldRate: BigInt(Math.round((analysis.metrics.yield || 0) * 100)),
+        tokenURI: '' 
       });
 
       if (isConfirmed) {

@@ -1,7 +1,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { useAccount } from 'wagmi';
-import { useUserStats, useUserCards } from '../hooks/useContracts';
+import { useUserStats } from '../hooks/useContracts';
 import { useMint } from '../hooks/useMint';
 import { useQuery } from '@tanstack/react-query';
 import { Card } from '../components/ui/Card';
@@ -23,7 +23,6 @@ import {
 
 const MintingLeaderboard: React.FC = () => {
   const { address } = useAccount();
-  const { data: userStats } = useUserStats();
   const { data: leaderboardData, isLoading } = useQuery({
     queryKey: ['minting-leaderboard'],
     queryFn: async () => {
@@ -131,8 +130,7 @@ const MintingLeaderboard: React.FC = () => {
 
 export const Profile: React.FC = () => {
   const { address, isConnected } = useAccount();
-  const { data: userStats } = useUserStats();
-  const { data: userCards = [] } = useUserCards();
+  const { data: userStats } = useUserStats(); // This is used in calculatedStats
   const { loadCollection } = useMint();
 
   const { data: collection = [] } = useQuery({
@@ -404,7 +402,7 @@ export const Profile: React.FC = () => {
             </Card>
           </motion.div>
 
-          {/* Recent Activity -  Show collection activity instead of userCards */}
+          {/* Recent Activity - Show collection activity */}
           <motion.div
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
