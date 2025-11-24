@@ -12,16 +12,14 @@ COPY packages/frontend/package.json ./packages/frontend/
 # Install all dependencies
 RUN npm ci
 
-# Copy ALL source code
-COPY . .
+# Copy config files first
+COPY packages/backend/tsconfig.json ./packages/backend/
 
-# Debug: Check backend structure
-RUN echo "=== Backend Structure ===" && \
-    ls -la packages/backend/ && \
-    echo "=== Backend src/ ===" && \
-    ls -la packages/backend/src/ && \
-    echo "=== TypeScript files ===" && \
-    find packages/backend/src -name "*.ts" | head -10
+# Copy ALL source code
+COPY packages/shared/ ./packages/shared/
+COPY packages/backend/ ./packages/backend/
+COPY packages/frontend/ ./packages/frontend/
+COPY packages/contracts/artifacts/contracts ./packages/contracts/artifacts/contracts
 
 # Build shared package first
 WORKDIR /app/packages/shared
