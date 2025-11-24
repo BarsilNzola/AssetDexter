@@ -12,7 +12,17 @@ COPY packages/frontend/package.json ./packages/frontend/
 # Install all dependencies
 RUN npm ci
 
-# Build shared package first (since backend depends on it)
+# Copy ALL config files first
+COPY packages/shared/tsconfig.json ./packages/shared/
+COPY packages/backend/tsconfig.json ./packages/backend/
+COPY packages/frontend/ ./packages/frontend/
+
+# Debug: Check if tsconfig files exist
+RUN echo "=== Checking tsconfig files ===" && \
+    ls -la packages/backend/tsconfig.json && \
+    cat packages/backend/tsconfig.json
+
+# Build shared package first
 COPY packages/shared/ ./packages/shared/
 WORKDIR /app/packages/shared
 RUN npm run build
@@ -21,10 +31,16 @@ RUN npm run build
 COPY packages/backend/ ./packages/backend/
 COPY packages/contracts/ ./packages/contracts/
 WORKDIR /app/packages/backend
+
+# Debug: Verify files before build
+RUN echo "=== Backend files before build ===" && \
+    ls -la && \
+    ls -la src/ && \
+    find . -name "*.ts" | head -10
+
 RUN npm run build
 
 # Build frontend
-COPY packages/frontend/ ./packages/frontend/
 WORKDIR /app/packages/frontend
 RUN npm run build
 
