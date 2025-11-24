@@ -39,7 +39,7 @@ WORKDIR /app
 COPY --from=base /app/packages/backend/dist ./
 
 # Copy built frontend to serve as static files
-COPY --from=base /app/packages/frontend/dist ./public
+COPY --from=base /app/packages/frontend/dist ./dist
 
 # Copy built shared package
 COPY --from=base /app/packages/shared/dist ./packages/shared/dist

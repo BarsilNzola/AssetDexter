@@ -22,6 +22,8 @@ app.use('/api/assets', assetsRoutes);
 app.use('/api/analysis', analysisRoutes);
 app.use('/api/contracts', contractsRoutes);
 
+app.use(express.static('dist'));
+
 // Test endpoint to verify all services
 app.get('/api/test', async (req, res) => {
   try {
@@ -162,12 +164,6 @@ app.use('*', (req, res) => {
 
 app.listen(PORT, () => {
   console.log(` AssetDexter backend running on port ${PORT}`);
-  console.log(` Health check: http://localhost:${PORT}/health`);
-  console.log(` Test endpoint: http://localhost:${PORT}/api/test`);
-  console.log(` Scan endpoint: http://localhost:${PORT}/api/scan`);
-  console.log(` Assets endpoint: http://localhost:${PORT}/api/assets`);
-  console.log(` Analysis endpoint: http://localhost:${PORT}/api/analysis`);
-  console.log(` Contracts endpoint: http://localhost:${PORT}/api/contracts`);
 });
 
 export default app;
