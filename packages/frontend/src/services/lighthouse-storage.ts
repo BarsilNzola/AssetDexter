@@ -255,7 +255,7 @@ export class LighthouseStorageService {
   /**
    * Store collection to Lighthouse or localStorage
    */
-  private async storeUserCollection(userAddress: string, assets: StoredAsset[]): Promise<string> {
+  public async storeUserCollection(userAddress: string, assets: StoredAsset[]): Promise<string> {
     const collection: UserCollection = {
       userAddress,
       assets: this.serializeDates(assets),
