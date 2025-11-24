@@ -12,13 +12,22 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) =
 
   if (!isOpen) return null;
 
+  // DEBUG: Log all connectors
+  console.log('All connectors:', connectors.map(c => ({
+    id: c.id,
+    name: c.name,
+    ready: c.ready,
+    uid: c.uid
+  })));
+
   const handleConnect = (connector: any) => {
     console.log('✅ Connecting with:', connector.name);
     connect({ connector });
     onClose();
   };
 
-  const simpleConnectors = connectors.filter(conn => conn.ready);
+  // Show ALL connectors for now, not just "ready" ones
+  const availableConnectors = connectors; // Remove the .filter for debugging
 
   // Map connector to display info
   const getConnectorInfo = (connector: any) => {
@@ -39,7 +48,7 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) =
       };
     }
     return { 
-      name: 'Browser Wallet', 
+      name: connector.name || 'Browser Wallet', 
       icon: ExternalLink, 
       bgColor: 'bg-gray-500 hover:bg-gray-600',
       textColor: 'text-white'
@@ -73,32 +82,44 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) =
           </p>
         </div>
 
-        {/* Wallet Options - USING SOLID BACKGROUNDS THAT WORK */}
+        {/* DEBUG INFO */}
+        <div className="mb-4 p-3 bg-yellow-50 border border-yellow-200 rounded">
+          <p className="text-sm text-yellow-800">
+            Found {availableConnectors.length} connector(s)
+          </p>
+        </div>
+
+        {/* Wallet Options - Show ALL connectors for debugging */}
         <div className="space-y-3">
-          {simpleConnectors.map((connector) => {
-            const info = getConnectorInfo(connector);
-            return (
-              <button
-                key={connector.id}
-                onClick={() => handleConnect(connector)}
-                className={`w-full p-4 rounded-lg font-semibold flex items-center gap-4 transition-colors duration-200 ${info.bgColor} ${info.textColor}`}
-              >
-                <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
-                  <info.icon size={20} className="text-white" />
-                </div>
-                <div className="text-left">
-                  <div className="font-semibold">
-                    {info.name}
+          {availableConnectors.length > 0 ? (
+            availableConnectors.map((connector) => {
+              const info = getConnectorInfo(connector);
+              return (
+                <button
+                  key={connector.id}
+                  onClick={() => handleConnect(connector)}
+                  disabled={!connector.ready}
+                  className={`w-full p-4 rounded-lg font-semibold flex items-center gap-4 transition-colors duration-200 ${info.bgColor} ${info.textColor} disabled:opacity-50 disabled:cursor-not-allowed`}
+                >
+                  <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
+                    <info.icon size={20} className="text-white" />
                   </div>
-                  <div className="text-sm opacity-90">
-                    {connector.id === 'walletConnect' 
-                      ? 'Scan QR code to connect' 
-                      : 'Click to connect directly'}
+                  <div className="text-left">
+                    <div className="font-semibold">
+                      {info.name} {!connector.ready && '(Not available)'}
+                    </div>
+                    <div className="text-sm opacity-90">
+                      ID: {connector.id} | Ready: {connector.ready.toString()}
+                    </div>
                   </div>
-                </div>
-              </button>
-            );
-          })}
+                </button>
+              );
+            })
+          ) : (
+            <div className="text-center p-4 bg-red-50 border border-red-200 rounded">
+              <p className="text-red-800">No wallet connectors found!</p>
+            </div>
+          )}
         </div>
 
         {/* Footer */}
