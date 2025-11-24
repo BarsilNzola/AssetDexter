@@ -153,7 +153,6 @@ app.get('/config.js', (req, res) => {
       VITE_WALLETCONNECT_PROJECT_ID: '${process.env.VITE_WALLETCONNECT_PROJECT_ID || ''}',
       VITE_ADMIN_ADDRESS: '${process.env.VITE_ADMIN_ADDRESS || ''}'
     };
-    console.log('Config loaded:', window.APP_CONFIG);
   `;
   res.send(config);
 });
