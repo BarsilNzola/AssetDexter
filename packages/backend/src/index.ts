@@ -139,6 +139,17 @@ app.get('/api/test', async (req, res) => {
   }
 });
 
+app.get('/config.js', (req, res) => {
+  res.set('Content-Type', 'application/javascript');
+  res.send(`
+    window.APP_CONFIG = {
+      VITE_LIGHTHOUSE_API_KEY: '${process.env.VITE_LIGHTHOUSE_API_KEY || ''}',
+      VITE_WALLETCONNECT_PROJECT_ID: '${process.env.VITE_WALLETCONNECT_PROJECT_ID || ''}',
+      VITE_ADMIN_ADDRESS: '${process.env.VITE_ADMIN_ADDRESS || ''}'
+    };
+  `);
+});
+
 // Health check
 app.get('/health', (req, res) => {
   res.json({ 
