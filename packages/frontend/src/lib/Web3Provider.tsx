@@ -12,12 +12,19 @@ const walletConnectProjectId = getConfig('VITE_WALLETCONNECT_PROJECT_ID');
 export const config = createConfig({
   chains: [lineaSepolia],
   connectors: [
-    injected({ target: 'metaMask' }),
+    // Use metaMask connector first - it has better detection
     metaMask({
       dappMetadata: {
         name: 'AssetDexter',
-        url: 'https://assetdexter.xyz',
-      },
+        url: window.location.origin,
+      }
+      extensionOnly: false,
+    }),
+    // Then use injected as fallback
+    injected({
+      target: 'metaMask',
+      // Add shim for better detection
+      shimDisconnect: true,
     }),
     walletConnect({
       projectId: walletConnectProjectId,
