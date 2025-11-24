@@ -1,5 +1,4 @@
 import React from 'react';
-import { motion, AnimatePresence } from 'framer-motion';
 import { X, Wallet, QrCode, ExternalLink } from 'lucide-react';
 import { useConnect } from 'wagmi';
 import { Card } from '../ui/Card';
@@ -54,84 +53,70 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) =
     }
   };
 
+  if (!isOpen) return null;
+
   return (
-    <AnimatePresence>
-      {isOpen && (
-        <div 
-          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm"
-          onClick={handleBackdropClick}
-          style={{ pointerEvents: 'auto', cursor: 'default' }}
-        >
-          <motion.div
-            initial={{ opacity: 0, scale: 0.95, y: 20 }}
-            animate={{ opacity: 1, scale: 1, y: 0 }}
-            exit={{ opacity: 0, scale: 0.95, y: 20 }}
-            className="relative w-full max-w-md"
-            style={{ pointerEvents: 'auto' }}
+    <div 
+      className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50"
+      onClick={handleBackdropClick}
+    >
+      <div className="relative w-full max-w-md">
+        <Card className="p-6 relative">
+          {/* Close Button */}
+          <button
+            onClick={onClose}
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
           >
-            <Card className="p-6 relative bg-white">
-              {/* Close Button */}
+            <X size={20} className="text-gray-500" />
+          </button>
+
+          {/* Header */}
+          <div className="text-center mb-6">
+            <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center">
+              <Wallet size={32} className="text-white" />
+            </div>
+            <h2 className="text-2xl font-bold text-gray-900 mb-2">
+              Connect Wallet
+            </h2>
+            <p className="text-gray-600">
+              Choose your preferred wallet to connect to AssetDexter
+            </p>
+          </div>
+
+          {/* Wallet Options - SIMPLE BUTTONS */}
+          <div className="space-y-3">
+            {walletOptions.map((option) => (
               <button
-                onClick={onClose}
-                className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors z-10"
-                style={{ cursor: 'pointer' }}
+                key={option.connector.id}
+                onClick={() => handleConnect(option.connector)}
+                disabled={!option.connector.ready}
+                className="w-full p-4 border border-gray-200 rounded-lg hover:border-blue-500 hover:bg-blue-50 transition-colors disabled:opacity-50 disabled:cursor-not-allowed text-left"
               >
-                <X size={20} className="text-gray-500" />
-              </button>
-
-              {/* Header */}
-              <div className="text-center mb-6">
-                <div className="w-16 h-16 mx-auto mb-4 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center">
-                  <Wallet size={32} className="text-white" />
-                </div>
-                <h2 className="text-2xl font-bold text-gray-900 mb-2">
-                  Connect Wallet
-                </h2>
-                <p className="text-gray-600">
-                  Choose your preferred wallet to connect to AssetDexter
-                </p>
-              </div>
-
-              {/* Wallet Options */}
-              <div className="space-y-3">
-                {walletOptions.map((option) => (
-                  <button
-                    key={option.connector.id}
-                    onClick={() => handleConnect(option.connector)}
-                    disabled={!option.connector.ready}
-                    className="w-full p-4 border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed text-left bg-white"
-                    style={{ 
-                      cursor: option.connector.ready ? 'pointer' : 'not-allowed',
-                      pointerEvents: 'auto'
-                    }}
-                  >
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                        <option.icon size={24} className="text-primary" />
-                      </div>
-                      <div className="flex-1">
-                        <div className="font-semibold text-gray-900">
-                          {option.name}
-                        </div>
-                        <div className="text-sm text-gray-600">
-                          {option.description}
-                        </div>
-                      </div>
+                <div className="flex items-center gap-4">
+                  <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center">
+                    <option.icon size={24} className="text-gray-600" />
+                  </div>
+                  <div className="flex-1">
+                    <div className="font-semibold text-gray-900">
+                      {option.name}
                     </div>
-                  </button>
-                ))}
-              </div>
+                    <div className="text-sm text-gray-600">
+                      {option.description}
+                    </div>
+                  </div>
+                </div>
+              </button>
+            ))}
+          </div>
 
-              {/* Footer */}
-              <div className="text-center mt-6 pt-4 border-t border-gray-200">
-                <p className="text-xs text-gray-500">
-                  By connecting, you agree to our Terms of Service
-                </p>
-              </div>
-            </Card>
-          </motion.div>
-        </div>
-      )}
-    </AnimatePresence>
+          {/* Footer */}
+          <div className="text-center mt-6 pt-4 border-t border-gray-200">
+            <p className="text-xs text-gray-500">
+              By connecting, you agree to our Terms of Service
+            </p>
+          </div>
+        </Card>
+      </div>
+    </div>
   );
 };
