@@ -13,25 +13,23 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) =
   if (!isOpen) return null;
 
   // DEBUG: Log all connectors
-  console.log('All connectors:', connectors.map(c => ({
-    id: c.id,
-    name: c.name,
-    ready: c.ready,
-    uid: c.uid
-  })));
+  console.log('All connectors:', connectors);
 
   const handleConnect = (connector: any) => {
-    console.log('✅ Connecting with:', connector.name);
+    console.log('Connecting with:', connector.name);
     connect({ connector });
     onClose();
   };
 
-  // Show ALL connectors for now, not just "ready" ones
-  const availableConnectors = connectors; // Remove the .filter for debugging
+  // Show ALL connectors for now
+  const availableConnectors = connectors;
 
   // Map connector to display info
   const getConnectorInfo = (connector: any) => {
-    if (connector.id === 'metaMask' || connector.name.toLowerCase().includes('metamask')) {
+    const connectorId = connector.id?.toString() || '';
+    const connectorName = connector.name?.toString() || '';
+    
+    if (connectorId.includes('metaMask') || connectorName.toLowerCase().includes('metamask')) {
       return { 
         name: 'MetaMask', 
         icon: Wallet, 
@@ -39,7 +37,7 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) =
         textColor: 'text-white'
       };
     }
-    if (connector.id === 'walletConnect') {
+    if (connectorId.includes('walletConnect')) {
       return { 
         name: 'WalletConnect', 
         icon: QrCode, 
@@ -48,7 +46,7 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) =
       };
     }
     return { 
-      name: connector.name || 'Browser Wallet', 
+      name: connectorName || 'Browser Wallet', 
       icon: ExternalLink, 
       bgColor: 'bg-gray-500 hover:bg-gray-600',
       textColor: 'text-white'
@@ -89,27 +87,29 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) =
           </p>
         </div>
 
-        {/* Wallet Options - Show ALL connectors for debugging */}
+        {/* Wallet Options - Show ALL connectors */}
         <div className="space-y-3">
           {availableConnectors.length > 0 ? (
-            availableConnectors.map((connector) => {
+            availableConnectors.map((connector: any) => {
               const info = getConnectorInfo(connector);
+              const isReady = connector.ready !== false; // Handle unknown type
+              
               return (
                 <button
-                  key={connector.id}
+                  key={connector.id || connector.name}
                   onClick={() => handleConnect(connector)}
-                  disabled={!connector.ready}
-                  className={`w-full p-4 rounded-lg font-semibold flex items-center gap-4 transition-colors duration-200 ${info.bgColor} ${info.textColor} disabled:opacity-50 disabled:cursor-not-allowed`}
+                  disabled={isReady === false}
+                  className={`w-full p-4 rounded-lg font-semibold flex items-center gap-4 transition-colors duration-200 ${info.bgColor} ${info.textColor} ${!isReady ? 'opacity-50 cursor-not-allowed' : ''}`}
                 >
                   <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
                     <info.icon size={20} className="text-white" />
                   </div>
                   <div className="text-left">
                     <div className="font-semibold">
-                      {info.name} {!connector.ready && '(Not available)'}
+                      {info.name} {!isReady && '(Not available)'}
                     </div>
                     <div className="text-sm opacity-90">
-                      ID: {connector.id} | Ready: {connector.ready.toString()}
+                      ID: {connector.id} | Ready: {isReady.toString()}
                     </div>
                   </div>
                 </button>
