@@ -1,4 +1,5 @@
 import lighthouse from '@lighthouse-web3/sdk';
+import { getConfig } from '../lib/utils/constants';
 
 export interface StoredAsset {
   id: string;
@@ -66,8 +67,13 @@ export class LighthouseStorageService {
   private apiKey: string;
 
   constructor() {
-    this.apiKey = import.meta.env.VITE_LIGHTHOUSE_API_KEY || '';
-    
+    this.apiKey = getConfig('VITE_LIGHTHOUSE_API_KEY');
+
+    console.log('LighthouseStorageService initialized:', {
+      hasApiKey: !!this.apiKey,
+      apiKeyPreview: this.apiKey ? `${this.apiKey.substring(0, 10)}...` : 'empty'
+    });
+
     if (!this.apiKey) {
       console.warn('Lighthouse API key not found, using localStorage fallback');
     } else {

@@ -1,3 +1,72 @@
+class AppConfig {
+  private static instance: AppConfig;
+  private config: { [key: string]: string } = {};
+
+  private constructor() {
+    this.loadConfig();
+  }
+
+  public static getInstance(): AppConfig {
+    if (!AppConfig.instance) {
+      AppConfig.instance = new AppConfig();
+    }
+    return AppConfig.instance;
+  }
+
+  private loadConfig() {
+    // Get config from window.APP_CONFIG (injected by config.js) or environment variables
+    const windowConfig = typeof window !== 'undefined' ? (window as any).APP_CONFIG : null;
+    
+    this.config = {
+      VITE_LIGHTHOUSE_API_KEY: 
+        windowConfig?.VITE_LIGHTHOUSE_API_KEY ||
+        import.meta.env.VITE_LIGHTHOUSE_API_KEY ||
+        '',
+      
+      VITE_WALLETCONNECT_PROJECT_ID:
+        windowConfig?.VITE_WALLETCONNECT_PROJECT_ID ||
+        import.meta.env.VITE_WALLETCONNECT_PROJECT_ID ||
+        '',
+      
+      VITE_ADMIN_ADDRESS:
+        windowConfig?.VITE_ADMIN_ADDRESS ||
+        import.meta.env.VITE_ADMIN_ADDRESS ||
+        '',
+
+      VITE_APP_ENV: 
+        windowConfig?.VITE_APP_ENV ||
+        import.meta.env.VITE_APP_ENV ||
+        'development'
+    };
+
+    console.log('AppConfig loaded:', {
+      hasWindowConfig: !!windowConfig,
+      configKeys: Object.keys(this.config),
+      lighthouseKeyPreview: this.config.VITE_LIGHTHOUSE_API_KEY ? 
+        `${this.config.VITE_LIGHTHOUSE_API_KEY.substring(0, 10)}...` : 'empty',
+      walletConnectPreview: this.config.VITE_WALLETCONNECT_PROJECT_ID ? 
+        `${this.config.VITE_WALLETCONNECT_PROJECT_ID.substring(0, 10)}...` : 'empty'
+    });
+  }
+
+  public get(key: string): string {
+    return this.config[key] || '';
+  }
+
+  public require(key: string): string {
+    const value = this.get(key);
+    if (!value) {
+      throw new Error(`Required configuration '${key}' is missing`);
+    }
+    return value;
+  }
+}
+
+// Convenience function
+export const getConfig = (key: string): string => {
+  return AppConfig.getInstance().get(key);
+};
+
 export const getApiBaseUrl = () => {
   if (import.meta.env.PROD) {
     return '/api';
@@ -73,3 +142,5 @@ export const getRandomRWAToken = () => {
   const randomIndex = Math.floor(Math.random() * fallbackTokens.length);
   return fallbackTokens[randomIndex];
 };
+
+export { AppConfig };

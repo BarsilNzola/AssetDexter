@@ -8,6 +8,7 @@ import { AssetDetails } from '../components/assets/AssetDetails';
 import { DiscoveryForm } from '../components/assets/DiscoveryForm';
 import { useScanner } from '../hooks/useScanner';
 import { useMint } from '../hooks/useMint';
+import { getConfig } from '../lib/utils/constants';
 import { RWAAnalysis, RWA, AssetType, RarityTier, RiskTier } from '../../../shared/src/types/rwa';
 
 interface ScannedAsset {
@@ -35,7 +36,7 @@ interface ScannedAsset {
 }
 
 // Admin address from environment variable
-const ADMIN_ADDRESS = import.meta.env.VITE_ADMIN_ADDRESS || '';
+const ADMIN_ADDRESS = getConfig('VITE_ADMIN_ADDRESS');
 
 // Helper functions moved outside the component
 const getAssetTypeLabel = (name: string): string => {
@@ -73,6 +74,12 @@ export const Home: React.FC = () => {
   const [addingToCollection, setAddingToCollection] = useState<string | null>(null);
 
   const isAdmin = ADMIN_ADDRESS && address?.toLowerCase() === ADMIN_ADDRESS.toLowerCase();
+
+  console.log('Home component config:', {
+    adminAddress: ADMIN_ADDRESS ? `${ADMIN_ADDRESS.substring(0, 10)}...` : 'empty',
+    currentAddress: address ? `${address.substring(0, 10)}...` : 'empty',
+    isAdmin
+  });
 
   const handleScanComplete = async (scannedAssetsArray: ScannedAsset[]) => {
     console.log('Scan complete, received assets:', scannedAssetsArray);

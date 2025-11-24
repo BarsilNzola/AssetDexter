@@ -2,8 +2,12 @@ import React from 'react';
 import { createConfig, http, WagmiProvider } from 'wagmi';
 import { lineaSepolia } from 'wagmi/chains';
 import { injected, walletConnect, metaMask } from 'wagmi/connectors';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { getConfig } from '../lib/utils/constants';
 
-const walletConnectProjectId = import.meta.env.VITE_WALLETCONNECT_PROJECT_ID;
+const queryClient = new QueryClient();
+
+const walletConnectProjectId = getConfig('VITE_WALLETCONNECT_PROJECT_ID');
 
 export const config = createConfig({
   chains: [lineaSepolia],
@@ -32,7 +36,9 @@ interface Web3ProviderProps {
 export const Web3Provider: React.FC<Web3ProviderProps> = ({ children }) => {
   return (
     <WagmiProvider config={config}>
-      {children}
+      <QueryClientProvider client={queryClient}>
+        {children}
+      </QueryClientProvider>
     </WagmiProvider>
   );
 };
