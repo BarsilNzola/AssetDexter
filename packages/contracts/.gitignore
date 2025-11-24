@@ -3,7 +3,8 @@ node_modules
 
 # Hardhat files
 /cache
-/artifacts
+/artifacts/@openzeppelin
+/artifacts/build-info
 
 # TypeChain files
 /typechain
