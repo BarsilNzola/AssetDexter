@@ -26,19 +26,22 @@ RUN npm run build
 WORKDIR /app/packages/backend
 RUN npm run build
 
+# DEBUG: Check what the backend build actually produced
+RUN echo "=== Backend dist structure ==="
+RUN find /app/packages/backend/dist -type f -name "*.js" | head -20
+RUN echo "=== Backend package.json main entry ==="
+RUN cat /app/packages/backend/package.json | grep main
+
 # Build frontend
 WORKDIR /app/packages/frontend
 RUN npm run build
-
-# Debug: Check if backend dist exists
-RUN ls -la /app/packages/backend/dist/
 
 # Final stage
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy built backend (FIXED PATH)
+# Copy built backend
 COPY --from=base /app/packages/backend/dist ./dist
 COPY --from=base /app/packages/backend/package.json ./
 
@@ -54,6 +57,11 @@ COPY --from=base /app/packages/contracts ./packages/contracts/
 
 # Copy production node_modules
 COPY --from=base /app/node_modules ./node_modules
+
+# DEBUG: Check final structure
+RUN echo "=== Final app structure ==="
+RUN find /app -name "*.js" -type f | grep -E "(index|server|main)" | head -10
+RUN ls -la /app/
 
 EXPOSE 3000
 
