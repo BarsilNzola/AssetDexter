@@ -12,7 +12,7 @@ interface WalletOption {
   description: string;
 }
 
-export const FixedConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) => {
+export const ConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) => {
   const { connectors, connect } = useConnect();
 
   if (!isOpen) return null;
