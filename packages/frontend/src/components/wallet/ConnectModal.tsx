@@ -15,7 +15,7 @@ interface WalletOption {
 }
 
 export const ConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) => {
-  const { connectors, connect } = useConnect();
+  const { connectors, connect, isPending } = useConnect();
 
   if (!isOpen) return null;
 
@@ -53,9 +53,15 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) =
     });
   }
 
-  const handleConnect = (connector: any) => {
-    connect({ connector });
-    onClose();
+  const handleConnect = async (connector: any) => {
+    console.log('Attempting to connect with:', connector.name);
+    try {
+      await connect({ connector });
+      console.log('Connection successful');
+      onClose();
+    } catch (error) {
+      console.error('Connection failed:', error);
+    }
   };
 
   return (
@@ -64,10 +70,10 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) =
       onClick={(e) => e.target === e.currentTarget && onClose()}
     >
       <div className="bg-white rounded-xl shadow-2xl p-6 w-full max-w-md border-2 border-primary/20 relative">
-        {/* Close Button */}
+        {/* Close Button - FIXED: Remove modal-button class */}
         <button
           onClick={onClose}
-          className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors modal-button"
+          className="absolute top-4 right-4 p-2 rounded-full hover:bg-gray-100 transition-colors"
         >
           <X size={20} className="text-gray-500" />
         </button>
@@ -91,8 +97,8 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) =
             <button
               key={option.connector.id}
               onClick={() => handleConnect(option.connector)}
-              disabled={!option.connector.ready}
-              className="modal-button disabled:opacity-50 disabled:cursor-not-allowed"
+              disabled={!option.connector.ready || isPending}
+              className="w-full p-4 border border-gray-200 rounded-lg text-left hover:border-primary hover:bg-primary/5 transition-colors duration-200 disabled:opacity-50 disabled:cursor-not-allowed bg-white"
             >
               <div className="flex items-center gap-4">
                 <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-primary/10 transition-colors">
@@ -106,10 +112,22 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) =
                     {option.description}
                   </div>
                 </div>
+                {isPending && (
+                  <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                )}
               </div>
             </button>
           ))}
         </div>
+
+        {/* Connection Status */}
+        {isPending && (
+          <div className="mt-4 p-3 bg-blue-50 border border-blue-200 rounded-lg">
+            <p className="text-sm text-blue-800 text-center">
+              Connecting to wallet...
+            </p>
+          </div>
+        )}
       </div>
     </div>
   );
