@@ -12,9 +12,6 @@ COPY packages/frontend/package.json ./packages/frontend/
 # Install all dependencies
 RUN npm ci
 
-# Copy config files first
-COPY packages/backend/tsconfig.json ./packages/backend/
-
 # Copy ALL source code
 COPY packages/shared/ ./packages/shared/
 COPY packages/backend/ ./packages/backend/
@@ -33,17 +30,20 @@ RUN npm run build
 WORKDIR /app/packages/frontend
 RUN npm run build
 
+# Debug: Check if backend dist exists
+RUN ls -la /app/packages/backend/dist/
+
 # Final stage
 FROM node:18-alpine
 
 WORKDIR /app
 
-# Copy built backend
-COPY --from=base /app/packages/backend/dist ./backend/dist
-COPY --from=base /app/packages/backend/package.json ./backend/
+# Copy built backend (FIXED PATH)
+COPY --from=base /app/packages/backend/dist ./dist
+COPY --from=base /app/packages/backend/package.json ./
 
-# Copy built frontend to backend public directory
-COPY --from=base /app/packages/frontend/dist ./backend/dist
+# Copy built frontend to serve as static files
+COPY --from=base /app/packages/frontend/dist ./public
 
 # Copy built shared package
 COPY --from=base /app/packages/shared/dist ./packages/shared/dist
@@ -54,8 +54,6 @@ COPY --from=base /app/packages/contracts ./packages/contracts/
 
 # Copy production node_modules
 COPY --from=base /app/node_modules ./node_modules
-
-WORKDIR /app/backend
 
 EXPOSE 3000
 
