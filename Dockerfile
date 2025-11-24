@@ -6,8 +6,8 @@ COPY packages/backend/package.json ./packages/backend/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/contracts/package.json ./packages/contracts/
 
-# Install all dependencies at root level first
-RUN npm ci --only=production --workspace=packages/backend --workspace=packages/shared --workspace=packages/contracts
+# Install ALL dependencies (including dev for TypeScript)
+RUN npm ci --workspace=packages/backend --workspace=packages/shared --workspace=packages/contracts
 
 # Copy backend source
 COPY packages/backend/ ./packages/backend/
@@ -42,7 +42,6 @@ WORKDIR /app
 # Copy backend
 COPY --from=backend /app/packages/backend/dist ./backend/dist
 COPY --from=backend /app/packages/backend/package.json ./backend/
-COPY --from=backend /app/node_modules ./node_modules
 
 # Copy frontend build
 COPY --from=frontend /app/packages/frontend/dist ./backend/dist
@@ -50,6 +49,9 @@ COPY --from=frontend /app/packages/frontend/dist ./backend/dist
 # Copy shared packages
 COPY --from=backend /app/packages/shared ./packages/shared/
 COPY --from=backend /app/packages/contracts ./packages/contracts/
+
+# Copy only production node_modules from backend
+COPY --from=backend /app/node_modules ./node_modules
 
 WORKDIR /app/backend
 
