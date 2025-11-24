@@ -95,33 +95,29 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) =
 
                 {/* Wallet Options */}
                 <div className="space-y-3 mb-6">
-                  {walletOptions.map((option, index) => (
-                    <motion.button
-                      key={option.connector.id}
-                      initial={{ opacity: 0, x: -20 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: index * 0.1 }}
-                      onClick={() => handleConnect(option.connector)}
-                      disabled={!option.connector.ready || isPending}
-                      className="w-full p-4 border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group text-left"
-                    >
-                      <div className="flex items-center gap-4">
-                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-primary/10 transition-colors">
-                          <option.icon size={24} className="text-primary" />
-                        </div>
-                        <div className="flex-1">
-                          <div className="font-semibold text-gray-900">
-                            {option.name}
-                          </div>
-                          <div className="text-sm text-gray-600">
-                            {option.description}
-                          </div>
-                        </div>
-                        {isPending && (
-                          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-                        )}
+                  {walletOptions.map((option) => (
+                    <button
+                    onClick={() => handleConnect(option.connector)}
+                    disabled={!option.connector.ready || isPending}
+                    className="w-full p-4 border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group relative" // added relative
+                  >
+                    <div className="flex items-center gap-4 pointer-events-none"> {/* Add pointer-events-none here */}
+                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-primary/10 transition-colors pointer-events-none">
+                        <option.icon size={24} className="text-primary pointer-events-none" />
                       </div>
-                    </motion.button>
+                      <div className="flex-1 text-left pointer-events-none"> {/* And here */}
+                        <div className="font-semibold text-gray-900 pointer-events-none">
+                          {option.name}
+                        </div>
+                        <div className="text-sm text-gray-600 pointer-events-none">
+                          {option.description}
+                        </div>
+                      </div>
+                      {isPending && (
+                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin pointer-events-none" />
+                      )}
+                    </div>
+                  </button>
                   ))}
                 </div>
 
