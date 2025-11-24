@@ -99,22 +99,27 @@ export const ConnectModal: React.FC<ConnectModalProps> = ({ isOpen, onClose }) =
                     <button
                       onClick={() => handleConnect(option.connector)}
                       disabled={!option.connector.ready || isPending}
-                      className="w-full p-4 border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-4 text-left"
+                      className="w-full p-4 border border-gray-200 rounded-lg hover:border-primary hover:bg-primary/5 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed group relative"
                     >
-                      <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-primary/10 transition-colors flex-shrink-0">
-                        <option.icon size={24} className="text-primary" />
-                      </div>
-                      <div className="flex-1 min-w-0"> {/* Added min-w-0 to prevent overflow issues */}
-                        <div className="font-semibold text-gray-900 truncate">
-                          {option.name}
+                      {/* This div prevents children from intercepting clicks */}
+                      <div className="absolute inset-0" />
+                      
+                      <div className="flex items-center gap-4 relative z-10 pointer-events-none">
+                        <div className="w-12 h-12 bg-gray-100 rounded-full flex items-center justify-center group-hover:bg-primary/10 transition-colors">
+                          <option.icon size={24} className="text-primary" />
                         </div>
-                        <div className="text-sm text-gray-600 line-clamp-2">
-                          {option.description}
+                        <div className="flex-1 text-left">
+                          <div className="font-semibold text-gray-900">
+                            {option.name}
+                          </div>
+                          <div className="text-sm text-gray-600">
+                            {option.description}
+                          </div>
                         </div>
+                        {isPending && (
+                          <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+                        )}
                       </div>
-                      {isPending && (
-                        <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin flex-shrink-0" />
-                      )}
                     </button>
                   ))}
                 </div>
