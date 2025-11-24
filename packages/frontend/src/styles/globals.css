@@ -7,19 +7,27 @@
   body {
     @apply bg-background text-gray-800 font-sans;
   }
+
+  button {
+    pointer-events: auto !important;
+    cursor: pointer !important;
+  }
 }
 
 @layer components {
   .btn-primary {
-    @apply bg-primary hover:bg-primary-dark text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95;
+    @apply bg-primary hover:bg-primary-dark text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95;
+    transform: none; /* Explicitly reset */
   }
   
   .btn-secondary {
-    @apply bg-secondary hover:bg-secondary-dark text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95;
+    @apply bg-secondary hover:bg-secondary-dark text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95;
+    transform: none; /* Explicitly reset */
   }
   
   .btn-accent {
-    @apply bg-accent hover:bg-accent/90 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 transform hover:scale-105 active:scale-95;
+    @apply bg-accent hover:bg-accent/90 text-white font-bold py-3 px-6 rounded-lg transition-all duration-200 hover:scale-105 active:scale-95;
+    transform: none; /* Explicitly reset */
   }
   
   .card {
@@ -28,6 +36,13 @@
   
   .scanner-glow {
     box-shadow: 0 0 20px theme('colors.secondary.DEFAULT'), 0 0 40px theme('colors.secondary.DEFAULT');
+  }
+
+  .modal-button {
+    @apply w-full p-4 border border-gray-200 rounded-lg text-left hover:border-primary hover:bg-primary/5 transition-colors duration-200;
+    pointer-events: auto !important;
+    cursor: pointer !important;
+    transform: none !important;
   }
 }
 
@@ -40,4 +55,13 @@
 
 .scan-animation {
   animation: scan 2s ease-in-out infinite;
+}
+
+/* Emergency override for modal elements */
+.fixed.inset-0 button,
+[class*="modal"] button,
+[class*="card"] button {
+  pointer-events: auto !important;
+  cursor: pointer !important;
+  transform: none !important;
 }
