@@ -69,7 +69,7 @@ export const getConfig = (key: string): string => {
 
 export const getApiBaseUrl = () => {
   if (import.meta.env.PROD) {
-    return '/api';
+    return '';
   }
   return 'http://localhost:3001';
 };
