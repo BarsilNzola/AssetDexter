@@ -77,14 +77,14 @@ export const getApiBaseUrl = () => {
 export const API_BASE_URL = getApiBaseUrl();
 
 export const API_ENDPOINTS = {
-  SCAN: `${API_BASE_URL}/api/scan`,
-  DISCOVER: `${API_BASE_URL}/api/scan/discover`,
-  DISCOVER_ASSETS: `${API_BASE_URL}/api/scan/discover-assets`,
-  SCAN_DISCOVERED: `${API_BASE_URL}/api/scan/scan-discovered`,
-  ASSETS: `${API_BASE_URL}/api/assets`,
-  ANALYSIS: `${API_BASE_URL}/api/analysis`,
-  CONTRACTS: `${API_BASE_URL}/api/contracts`,
-  TEST: `${API_BASE_URL}/api/test`,
+  SCAN: `${API_BASE_URL}/scan`,
+  DISCOVER: `${API_BASE_URL}/scan/discover`,
+  DISCOVER_ASSETS: `${API_BASE_URL}/scan/discover-assets`,
+  SCAN_DISCOVERED: `${API_BASE_URL}/scan/scan-discovered`,
+  ASSETS: `${API_BASE_URL}/assets`,
+  ANALYSIS: `${API_BASE_URL}/analysis`,
+  CONTRACTS: `${API_BASE_URL}/contracts`,
+  TEST: `${API_BASE_URL}/test`,
   HEALTH: `${API_BASE_URL}/health`,
 } as const;
 
