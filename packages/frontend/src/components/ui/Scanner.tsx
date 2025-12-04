@@ -5,35 +5,16 @@ import { Button } from './Button';
 import { API_ENDPOINTS, getDiscoveredAssets } from '../../lib/utils/constants';
 
 interface ScannerProps {
+  onScanStart?: (totalAssets: number) => void;
+  onAssetFound?: (asset: any) => void;
   onScanComplete: (assets: any[]) => void;
   isScanning: boolean;
   setIsScanning: (scanning: boolean) => void;
 }
 
-interface ScannedAsset {
-  assetId: string;
-  rarityScore: number;
-  rarityTier: any;
-  riskTier: any;
-  marketPrediction: 'Bullish' | 'Neutral' | 'Bearish';
-  predictionConfidence: number;
-  healthScore: number;
-  metrics: {
-    liquidityDepth: number;
-    holderDistribution: number;
-    yield: number;
-    volatility: number;
-    age: number;
-  };
-  timestamp: string;
-  tokenInfo?: {
-    address: string;
-    chainId: number;
-    name: string;
-  };
-}
-
 export const Scanner: React.FC<ScannerProps> = ({
+  onScanStart,
+  onAssetFound,
   onScanComplete,
   isScanning,
   setIsScanning,
@@ -45,38 +26,40 @@ export const Scanner: React.FC<ScannerProps> = ({
     setProgress(0);
     
     try {
-      // Get discovered assets (will be empty if none discovered)
       const discoveredAssets = await getDiscoveredAssets();
       console.log('Discovered assets to scan:', discoveredAssets);
       
       if (discoveredAssets.length === 0) {
-        // Show error message - no assets to scan
         setTimeout(() => {
           onScanComplete([]);
           setIsScanning(false);
           setProgress(0);
-          
-          // You can show a toast or message here
           alert('No assets discovered yet! Use the discovery feature to add assets to the contract first.');
         }, 500);
         return;
       }
       
-      const allAssets: ScannedAsset[] = [];
+      // Notify parent of scan start with total count
+      if (onScanStart) {
+        onScanStart(discoveredAssets.length);
+      }
       
-      // Scan discovered addresses
+      const allAssets: any[] = [];
+      
+      // Scan discovered addresses with individual delays
       for (let i = 0; i < discoveredAssets.length; i++) {
         const token = discoveredAssets[i];
-        setProgress(Math.round((i / discoveredAssets.length) * 100));
+        const currentProgress = Math.round((i / discoveredAssets.length) * 100);
+        setProgress(currentProgress);
         
         try {
           const scanParams = {
             contractAddress: token.address,
             chainId: token.chainId
           };
-  
+
           console.log(`Scanning ${token.name} at ${token.address} on chain ${token.chainId}`);
-  
+
           const response = await fetch(API_ENDPOINTS.SCAN, {
             method: 'POST',
             headers: {
@@ -87,10 +70,18 @@ export const Scanner: React.FC<ScannerProps> = ({
           
           if (response.ok) {
             const scanResult = await response.json();
-            allAssets.push({
+            const assetWithTokenInfo = {
               ...scanResult,
               tokenInfo: token
-            });
+            };
+            
+            allAssets.push(assetWithTokenInfo);
+            
+            // Notify parent of individual asset found
+            if (onAssetFound) {
+              onAssetFound(assetWithTokenInfo);
+            }
+            
             console.log(`Successfully scanned ${token.name}:`, scanResult);
           } else {
             console.warn(`Scan failed for ${token.name}:`, response.status);
@@ -98,6 +89,9 @@ export const Scanner: React.FC<ScannerProps> = ({
         } catch (error) {
           console.error(`Failed to scan ${token.name}:`, error);
         }
+        
+        // Small delay between scanning each asset to simulate real-time finding
+        await new Promise(resolve => setTimeout(resolve, 300));
       }
       
       setProgress(100);
