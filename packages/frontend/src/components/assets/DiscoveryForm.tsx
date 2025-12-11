@@ -236,9 +236,9 @@ export const DiscoveryForm: React.FC = () => {
       setBatchNumber(batchNumber + 1);
       
       if (saveResult.saved > 0) {
-        alert(`✅ Successfully discovered ${saveResult.saved} new assets in Batch ${batchNumber}!`);
+        alert(` Successfully discovered ${saveResult.saved} new assets in Batch ${batchNumber}!`);
       } else {
-        alert('❌ No assets were successfully discovered. Check console for errors.');
+        alert(' No assets were successfully discovered. Check console for errors.');
       }
       
     } catch (err) {
@@ -284,7 +284,7 @@ export const DiscoveryForm: React.FC = () => {
       
       setDiscoveryProgress(null);
       
-      alert(`🎉 Discovery complete!\n\n` +
+      alert(` Discovery complete!\n\n` +
             `Total saved: ${result.saved}\n` +
             `Total failed: ${result.failed}\n` +
             `Total available: ${result.total}\n` +

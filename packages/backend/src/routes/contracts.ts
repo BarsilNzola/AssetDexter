@@ -35,29 +35,31 @@ router.get('/debug-contract', async (req, res) => {
     const discoveries = [];
     const total = Number(totalDiscoveries);
     
-    for (let i = 0; i < Math.min(total, 10); i++) {
+    for (let i = 1; i <= Math.min(total, 10); i++) {
       try {
         const card = await contractService.getDiscoveryCard(BigInt(i));
         
-        // Explicitly convert ALL BigInt properties
+        // Properly serialize ALL values
         const serializedCard = {
-          tokenId: card.tokenId.toString(),
+          tokenId: Number(card.tokenId).toString(),
           discoverer: card.discoverer,
-          discoveryTimestamp: card.discoveryTimestamp.toString(),
-          assetType: card.assetType,
-          rarity: card.rarity,
-          risk: card.risk,
-          rarityScore: card.rarityScore.toString(),
-          predictionScore: card.predictionScore.toString(),
+          discoveryTimestamp: Number(card.discoveryTimestamp).toString(),
+          assetType: Number(card.assetType),
+          rarity: Number(card.rarity),
+          risk: Number(card.risk),
+          rarityScore: Number(card.rarityScore),
+          predictionScore: Number(card.predictionScore),
           assetAddress: card.assetAddress,
           assetName: card.assetName,
           assetSymbol: card.assetSymbol,
-          currentValue: card.currentValue.toString(),
-          yieldRate: card.yieldRate.toString()
+          currentValue: Number(card.currentValue).toString(),
+          yieldRate: Number(card.yieldRate).toString()
         };
         discoveries.push(serializedCard);
       } catch (error) {
-        console.warn(`Failed to fetch discovery card ${i}:`, error);
+        console.warn(`Failed to fetch discovery card ${i}:`, 
+          error instanceof Error ? error.message : 'Unknown error'
+        );
       }
     }
     
@@ -68,10 +70,17 @@ router.get('/debug-contract', async (req, res) => {
     });
   } catch (error) {
     console.error('Contract debug error:', error);
-    res.status(500).json({ 
+    
+    // Handle BigInt serialization explicitly
+    const errorResponse = {
       error: 'Failed to debug contract',
       details: error instanceof Error ? error.message : 'Unknown error'
-    });
+    };
+    
+    // Safe JSON stringify
+    res.status(500).json(JSON.parse(JSON.stringify(errorResponse, (key, value) =>
+      typeof value === 'bigint' ? value.toString() : value
+    )));
   }
 });
 

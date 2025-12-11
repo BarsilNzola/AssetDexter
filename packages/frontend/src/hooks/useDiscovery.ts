@@ -48,14 +48,37 @@ export const useDiscovery = () => {
   useEffect(() => {
     const fetchExistingAssets = async () => {
       try {
+        // Use the working endpoint
         const response = await fetch('/api/contracts/debug-contract');
+        
         if (response.ok) {
           const data = await response.json();
-          setExistingAssets(data.discoveries || []);
-          console.log(`Loaded ${data.discoveries?.length || 0} existing assets from contract`);
+          
+          // Handle the response format
+          if (data.discoveries && Array.isArray(data.discoveries)) {
+            setExistingAssets(data.discoveries);
+            console.log(` Loaded ${data.discoveries.length} existing assets from contract`);
+            
+            // Log the asset addresses for debugging
+            data.discoveries.forEach((asset: any, index: number) => {
+              console.log(`Asset ${index + 1}:`, {
+                tokenId: asset.tokenId,
+                address: asset.assetAddress,
+                name: asset.assetName,
+                symbol: asset.assetSymbol
+              });
+            });
+          } else {
+            console.warn('Unexpected response format from debug-contract:', data);
+            setExistingAssets([]);
+          }
+        } else {
+          console.error('Failed to fetch from debug-contract:', response.status);
+          setExistingAssets([]);
         }
       } catch (error) {
         console.error('Failed to fetch existing assets:', error);
+        setExistingAssets([]);
       }
     };
     
@@ -301,7 +324,7 @@ export const useDiscovery = () => {
             });
           }
           
-          console.log(`✅ Transaction submitted for: ${asset.assetName} (${txHash})`);
+          console.log(` Transaction submitted for: ${asset.assetName} (${txHash})`);
 
           // Wait a bit for the transaction to be processed
           await new Promise(resolve => setTimeout(resolve, 2000));
@@ -309,7 +332,7 @@ export const useDiscovery = () => {
         } catch (error) {
           errorCount++;
           const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-          console.error(`❌ Failed to save asset ${asset.assetName}:`, errorMessage);
+          console.error(` Failed to save asset ${asset.assetName}:`, errorMessage);
           
           // Update results state
           setResults(prev => ({ ...prev, failed: errorCount }));
@@ -327,7 +350,7 @@ export const useDiscovery = () => {
           if (errorMessage.includes('nonce') || 
               errorMessage.includes('replaced') || 
               errorMessage.includes('dropped')) {
-            console.error('⚠️ Stopping batch due to transaction sequencing error');
+            console.error(' Stopping batch due to transaction sequencing error');
             break;
           }
           
@@ -346,22 +369,22 @@ export const useDiscovery = () => {
       };
 
       setResults(finalResults);
-      console.log(`🎉 Batch save completed: ${savedCount} saved, ${errorCount} failed`);
+      console.log(` Batch save completed: ${savedCount} saved, ${errorCount} failed`);
       
       return finalResults;
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      console.error('❌ Batch save failed:', errorMessage);
+      console.error(' Batch save failed:', errorMessage);
       throw error;
     } finally {
       setIsDiscovering(false);
     }
   };
 
-  // NEW: Helper function to process all assets in sequential batches
+  // Helper function to process all assets in sequential batches
   const discoverAllAssetsInBatches = async (
     batchSize: number = 5,
-    delayBetweenBatches: number = 10000 // 10 seconds between batches
+    delayBetweenBatches: number = 10000
   ): Promise<DiscoveryResult> => {
     try {
       console.log(`Starting to discover ALL assets in batches of ${batchSize}...`);
@@ -373,46 +396,94 @@ export const useDiscovery = () => {
           'Content-Type': 'application/json',
         },
       });
-
+  
       if (!scanResponse.ok) {
         throw new Error('Failed to discover assets from sources');
       }
-
+  
       const { assets } = await scanResponse.json();
       console.log(`Total assets available: ${assets.length}`);
       
-      // Get existing assets from contract
-      const existingAssetsResponse = await fetch('/api/contracts/get-assets');
-      const existingAssetsData = await existingAssetsResponse.json();
+      // Get existing assets from contract - USE DEBUG-CONTRACT
+      let existingAssetsData: any[] = [];
+      try {
+        const existingAssetsResponse = await fetch('/api/contracts/debug-contract');
+        if (existingAssetsResponse.ok) {
+          const data = await existingAssetsResponse.json();
+          // Handle both response formats
+          existingAssetsData = data.discoveries || data.assets || [];
+          console.log(`API response:`, {
+            totalDiscoveries: data.totalDiscoveries,
+            discoveriesCount: data.discoveries?.length,
+            hasDiscoveries: !!data.discoveries
+          });
+        }
+      } catch (error) {
+        console.warn('Failed to fetch from debug-contract, trying fallback:', error);
+        
+        // Fallback: Try to fetch each token individually
+        try {
+          // First get total count
+          const totalResponse = await fetch('/api/contracts/total-discoveries');
+          if (totalResponse.ok) {
+            const totalData = await totalResponse.json();
+            const total = parseInt(totalData.totalDiscoveries) || 0;
+            console.log(`Fallback: Found ${total} total discoveries`);
+            
+            // Fetch each token
+            for (let i = 1; i <= total; i++) {
+              try {
+                const tokenResponse = await fetch(`/api/contracts/discovery-card/${i}`);
+                if (tokenResponse.ok) {
+                  const tokenData = await tokenResponse.json();
+                  existingAssetsData.push(tokenData);
+                }
+              } catch (tokenError) {
+                console.log(`Failed to fetch token ${i}`);
+              }
+            }
+          }
+        } catch (fallbackError) {
+          console.error('Fallback also failed:', fallbackError);
+        }
+      }
+      
       const existingAssetAddresses = new Set(
-        existingAssetsData.map((asset: any) => asset.assetAddress?.toLowerCase())
+        existingAssetsData
+          .filter((asset: any) => asset.assetAddress)
+          .map((asset: any) => asset.assetAddress.toLowerCase())
       );
       
       console.log(`Found ${existingAssetAddresses.size} existing assets in contract`);
+      console.log('Existing addresses:', Array.from(existingAssetAddresses));
       
       let totalSaved = 0;
       let totalFailed = 0;
       const allTransactionHashes: string[] = [];
       
+      const newAssetsCount = assets.length - existingAssetAddresses.size;
+      console.log(`New assets to discover: ${newAssetsCount}`);
+      
+      // Filter out assets already in contract
+      const newAssets = assets.filter((asset: any) => 
+        !existingAssetAddresses.has(asset.address?.toLowerCase())
+      );
+      
+      console.log(`Filtered to ${newAssets.length} new assets (after removing duplicates)`);
+      
       // Process in batches
-      const totalBatches = Math.ceil(assets.length / batchSize);
+      const totalBatches = Math.ceil(newAssets.length / batchSize);
       
       for (let batchNum = 1; batchNum <= totalBatches; batchNum++) {
         console.log(`\n=== Processing Batch ${batchNum}/${totalBatches} ===`);
         
         const startIndex = (batchNum - 1) * batchSize;
-        const endIndex = Math.min(startIndex + batchSize, assets.length);
+        const endIndex = Math.min(startIndex + batchSize, newAssets.length);
         
-        // Filter and map assets for this batch
+        // Map assets for this batch
         const batchAssets: DiscoveryParams[] = [];
         for (let i = startIndex; i < endIndex; i++) {
-          const asset = assets[i];
-          
-          // Skip if already in contract
-          if (asset.address && existingAssetAddresses.has(asset.address.toLowerCase())) {
-            console.log(`Skipping already discovered asset: ${asset.name}`);
-            continue;
-          }
+          const asset = newAssets[i];
           
           if (asset.address && asset.name && asset.symbol) {
             const mappedAsset: DiscoveryParams = {
@@ -429,7 +500,7 @@ export const useDiscovery = () => {
               tokenURI: asset.tokenURI || `data:application/json;base64,${Buffer.from(JSON.stringify({
                 name: `${asset.name} Discovery Card`,
                 description: `Real World Asset Discovery Card for ${asset.name}`,
-                image: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgZmlsbD0iIzNCODJGNiIvPjx0ZXh0IHg9IjIwMCIgeT0iMjAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWjdZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj5SV0E8L3RleHQ+PC9zdmc+"
+                image: "data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjQwMCIgZmlsbD0iIzNCODJGNiIvPjx0ZXh0IHg9IjIwMCIgeT0iMjAwIiBmb250LWZhbWlseT0iQXJpYWwiIGZvbnQtc2l6ZT0iMjQiIGZpbGw9IndoaXRlIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj5SV0E8L3RleHQ+PC9zdmc+"
               })).toString('base64')}`
             };
             batchAssets.push(mappedAsset);
@@ -440,6 +511,8 @@ export const useDiscovery = () => {
           console.log(`No new assets to add in batch ${batchNum}`);
           continue;
         }
+        
+        console.log(`Batch ${batchNum}: Processing ${batchAssets.length} assets`);
         
         // Save this batch
         const batchResult = await saveDiscoveredAssets(batchAssets, {
@@ -463,16 +536,18 @@ export const useDiscovery = () => {
       
       const finalResult: DiscoveryResult = {
         total: assets.length,
-        valid: assets.length - existingAssetAddresses.size,
+        valid: newAssets.length,
         saved: totalSaved,
         failed: totalFailed,
         transactionHashes: allTransactionHashes,
         assets: []
       };
       
-      console.log(`\n🎉 ALL BATCHES COMPLETE!`);
-      console.log(`Total saved: ${totalSaved}`);
-      console.log(`Total failed: ${totalFailed}`);
+      console.log(`\n ALL BATCHES COMPLETE!`);
+      console.log(`Total scanned: ${assets.length}`);
+      console.log(`New assets found: ${newAssets.length}`);
+      console.log(`Successfully saved: ${totalSaved}`);
+      console.log(`Failed: ${totalFailed}`);
       
       return finalResult;
       
@@ -489,7 +564,7 @@ export const useDiscovery = () => {
     // Batch operations
     discoverFromSources,
     saveDiscoveredAssets,
-    discoverAllAssetsInBatches, // NEW: Process all assets
+    discoverAllAssetsInBatches, 
     
     // State
     isPending,
