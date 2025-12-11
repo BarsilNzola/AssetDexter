@@ -8,6 +8,7 @@ import { AssetDetails } from '../components/assets/AssetDetails';
 import { DiscoveryForm } from '../components/assets/DiscoveryForm';
 import { useScanner } from '../hooks/useScanner';
 import { useMint } from '../hooks/useMint';
+import { LighthouseStorageService } from '../services/lighthouse-storage';
 import { getConfig } from '../lib/utils/constants';
 import { RWAAnalysis, RWA, AssetType, RarityTier, RiskTier } from '../../../shared/src/types/rwa';
 import { Plus, Radar, Crown, Check } from 'lucide-react';
@@ -75,6 +76,8 @@ export const Home: React.FC = () => {
     percentage: 0
   });
 
+  const [storageService] = useState(() => new LighthouseStorageService());
+
   const [alreadyCollectedAssets, setAlreadyCollectedAssets] = useState<Set<string>>(new Set());
   
   const { isScanning } = useScanner();
@@ -84,19 +87,44 @@ export const Home: React.FC = () => {
 
   useEffect(() => {
     if (address) {
-      // In production, fetch from your backend API
-      // For now, use localStorage
-      const savedCollected = localStorage.getItem(`collected_assets_${address}`);
-      if (savedCollected) {
+      // Use LighthouseStorageService instead of localStorage
+      const loadCollectedAssets = async () => {
         try {
-          const collected = JSON.parse(savedCollected);
-          setAlreadyCollectedAssets(new Set(collected));
+          const collection = await storageService.getUserCollection(address);
+          
+          // Create a Set of asset identifiers already in collection
+          const collectedSet = new Set<string>();
+          
+          collection.forEach((asset: any) => {
+            // Extract asset identifier
+            const assetKey = asset.assetData?.tokenInfo?.address || 
+                            asset.assetData?.assetId || 
+                            asset.id;
+            if (assetKey) {
+              collectedSet.add(assetKey);
+            }
+          });
+          
+          setAlreadyCollectedAssets(collectedSet);
         } catch (error) {
-          console.error('Failed to load collected assets:', error);
+          console.error('Failed to load collection from Lighthouse:', error);
+          
+          // Fallback to localStorage
+          const savedCollected = localStorage.getItem(`collected_assets_${address}`);
+          if (savedCollected) {
+            try {
+              const collected = JSON.parse(savedCollected);
+              setAlreadyCollectedAssets(new Set(collected));
+            } catch (error) {
+              console.error('Failed to load collected assets from localStorage:', error);
+            }
+          }
         }
-      }
+      };
+      
+      loadCollectedAssets();
     }
-  }, [address]);
+  }, [address, storageService]);
 
   const getGridColumns = () => {
     const count = scannedAssets.length;
@@ -181,22 +209,23 @@ export const Home: React.FC = () => {
     // Check if already collected
     if (alreadyCollectedAssets.has(assetKey)) {
       console.log('Asset already in collection');
-      // Show feedback to user
       return;
     }
     
     setAddingToCollection(assetKey);
     try {
+      // Use useMint hook's addToCollection instead
       const success = await addToCollection(scannedAsset);
+      
       if (success) {
         console.log('Successfully added to collection');
         
-        // Update already collected assets
+        // Update already collected assets locally
         const updatedCollected = new Set(alreadyCollectedAssets);
         updatedCollected.add(assetKey);
         setAlreadyCollectedAssets(updatedCollected);
         
-        // Save to localStorage (in production, save to backend)
+        // Also store a quick reference in localStorage for fast lookup
         localStorage.setItem(
           `collected_assets_${address}`, 
           JSON.stringify([...updatedCollected])
@@ -219,7 +248,10 @@ export const Home: React.FC = () => {
   // Check if an asset is already collected
   const isAssetAlreadyCollected = (scannedAsset: ScannedAsset): boolean => {
     const assetKey = scannedAsset.assetId || scannedAsset.tokenInfo?.address;
-    return assetKey ? alreadyCollectedAssets.has(assetKey) : false;
+    if (!assetKey) return false;
+    
+    // Check both local state and localStorage for quick lookup
+    return alreadyCollectedAssets.has(assetKey);
   };
 
   const handleMintSuccess = () => {

@@ -58,6 +58,52 @@ export class DiscoveryService {
     return discoveredAssets;
   }
 
+  private async discoverFromCreatorBid(): Promise<DiscoveredAsset[]> {
+    try {
+      console.log('Fetching art assets from CreatorBid...');
+      const artAssets = await this.creatorBidService.fetchArtAssets();
+      
+      if (artAssets.length === 0) {
+        console.log('No art assets found from CreatorBid');
+        return [];
+      }
+      
+      console.log(`Processing ${artAssets.length} art assets from CreatorBid`);
+      
+      return artAssets.map(art => {
+        const currentBid = art.currentBid || 1;
+        const estimateHigh = art.estimate?.high || currentBid * 1.5;
+        const potentialReturn = (estimateHigh - currentBid) / currentBid;
+        
+        // More realistic art rarity scoring
+        const bidScore = Math.min(40, Math.floor(currentBid / 10000)); // $10K bid = 40 points
+        const artistScore = art.artist ? 20 : 0; // Known artist bonus
+        const provenanceScore = art.provenance?.length > 2 ? 15 : 0; // Good provenance
+        
+        const rarityScore = Math.min(100, bidScore + artistScore + provenanceScore + 25);
+        const predictionScore = Math.min(100, Math.floor(potentialReturn * 100) + 30);
+        
+        return {
+          address: this.generateAddressFromId(art.id),
+          chainId: 1,
+          name: art.title,
+          symbol: `ART-${art.title.substring(0, 3).toUpperCase()}`,
+          assetType: AssetType.ART,
+          rarity: this.calculateRarityTier(rarityScore),
+          risk: RiskTier.SPECULATIVE, // Art is always speculative
+          rarityScore: rarityScore,
+          predictionScore: predictionScore,
+          currentValue: BigInt(Math.floor(currentBid * 1000000)),
+          yieldRate: BigInt(Math.floor(potentialReturn * 10000)),
+          tokenURI: this.generateTokenURI(art.title, `ART-${art.title.substring(0, 3).toUpperCase()}`, AssetType.ART)
+        };
+      });
+    } catch (error) {
+      console.error('Error discovering from CreatorBid:', error);
+      return [];
+    }
+  }
+
   private async discoverFromDeFiLlama(): Promise<DiscoveredAsset[]> {
     try {
       console.log('Fetching RWA pools from DeFi Llama...');
@@ -163,52 +209,6 @@ export class DiscoveryService {
     if (tvl > 10000000 && apy < 0.25) return RiskTier.MEDIUM; // $10M+ TVL
     if (tvl > 1000000) return RiskTier.HIGH; // $1M+ TVL
     return RiskTier.SPECULATIVE; // Low TVL or very high APY
-  }
-
-  private async discoverFromCreatorBid(): Promise<DiscoveredAsset[]> {
-    try {
-      console.log('Fetching art assets from CreatorBid...');
-      const artAssets = await this.creatorBidService.fetchArtAssets();
-      
-      if (artAssets.length === 0) {
-        console.log('No art assets found from CreatorBid');
-        return [];
-      }
-      
-      console.log(`Processing ${artAssets.length} art assets from CreatorBid`);
-      
-      return artAssets.map(art => {
-        const currentBid = art.currentBid || 1;
-        const estimateHigh = art.estimate?.high || currentBid * 1.5;
-        const potentialReturn = (estimateHigh - currentBid) / currentBid;
-        
-        // More realistic art rarity scoring
-        const bidScore = Math.min(40, Math.floor(currentBid / 10000)); // $10K bid = 40 points
-        const artistScore = art.artist ? 20 : 0; // Known artist bonus
-        const provenanceScore = art.provenance?.length > 2 ? 15 : 0; // Good provenance
-        
-        const rarityScore = Math.min(100, bidScore + artistScore + provenanceScore + 25);
-        const predictionScore = Math.min(100, Math.floor(potentialReturn * 100) + 30);
-        
-        return {
-          address: this.generateAddressFromId(art.id),
-          chainId: 1,
-          name: art.title,
-          symbol: `ART-${art.title.substring(0, 3).toUpperCase()}`,
-          assetType: AssetType.ART,
-          rarity: this.calculateRarityTier(rarityScore),
-          risk: RiskTier.SPECULATIVE, // Art is always speculative
-          rarityScore: rarityScore,
-          predictionScore: predictionScore,
-          currentValue: BigInt(Math.floor(currentBid * 1000000)),
-          yieldRate: BigInt(Math.floor(potentialReturn * 10000)),
-          tokenURI: this.generateTokenURI(art.title, `ART-${art.title.substring(0, 3).toUpperCase()}`, AssetType.ART)
-        };
-      });
-    } catch (error) {
-      console.error('Error discovering from CreatorBid:', error);
-      return [];
-    }
   }
 
   private async discoverKnownRWAs(): Promise<DiscoveredAsset[]> {
