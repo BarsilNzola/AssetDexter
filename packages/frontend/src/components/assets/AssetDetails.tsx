@@ -3,7 +3,16 @@ import { RWA, RWAAnalysis, RarityTier, RiskTier } from '../../../../shared/src/t
 import { Button } from '../ui/Button';
 import { useMint } from '../../hooks/useMint';
 import { useAccount } from 'wagmi';
-import { Users, DollarSign, TrendingUp, Shield, Plus, Package, Check } from 'lucide-react';
+import { 
+  Users, 
+  DollarSign, 
+  TrendingUp, 
+  Shield, 
+  Plus, 
+  Package, 
+  Check, 
+  Crown
+} from 'lucide-react';
 
 interface AssetDetailsProps {
   asset: RWA;
@@ -13,6 +22,10 @@ interface AssetDetailsProps {
   onAddToCollection?: () => void;
   isAlreadyCollected?: boolean;
   isAddingToCollection?: boolean;
+  // NEW: Minting status
+  isAlreadyMinted?: boolean;
+  tokenId?: string;
+  mintedTxHash?: string;
 }
 
 const RarityDisplay: React.FC<{ rarity: RarityTier }> = ({ rarity }) => {
@@ -80,6 +93,9 @@ export const AssetDetails: React.FC<AssetDetailsProps> = ({
   onAddToCollection,
   isAlreadyCollected = false,
   isAddingToCollection = false,
+  isAlreadyMinted = false,
+  tokenId,
+  mintedTxHash,
 }) => {
   const { address } = useAccount();
   const { mintDiscoveryCard, isMinting, isConfirmed } = useMint();
@@ -88,6 +104,11 @@ export const AssetDetails: React.FC<AssetDetailsProps> = ({
   const handleMint = async () => {
     if (!address) {
       setMintError('Please connect your wallet first');
+      return;
+    }
+
+    if (isAlreadyMinted) {
+      setMintError('This asset has already been minted');
       return;
     }
 
@@ -119,19 +140,77 @@ export const AssetDetails: React.FC<AssetDetailsProps> = ({
 
   return (
     <div className="space-y-6">
-      {/* Asset Header */}
+      {/* Asset Header with Status */}
       <div className="flex items-start justify-between">
         <div className="flex items-center gap-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center text-white font-bold text-lg">
+          <div className="w-16 h-16 bg-gradient-to-br from-primary to-secondary rounded-full flex items-center justify-center text-white font-bold text-lg relative">
             {asset.symbol.slice(0, 3)}
+            {/* Minted Badge */}
+            {isAlreadyMinted && (
+              <div className="absolute -top-2 -right-2 bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-bold px-2 py-1 rounded-full shadow-lg">
+                <Crown size={10} />
+              </div>
+            )}
           </div>
           <div>
             <h3 className="text-2xl font-bold text-gray-900">{asset.name}</h3>
             <p className="text-gray-600">{asset.symbol}</p>
+            {tokenId && (
+              <p className="text-sm text-gray-500 font-mono mt-1">
+                Token ID: {tokenId}
+              </p>
+            )}
           </div>
         </div>
-        <RarityDisplay rarity={analysis.rarityTier} />
+        <div className="flex flex-col items-end gap-2">
+          <RarityDisplay rarity={analysis.rarityTier} />
+          
+          {/* Status Badges */}
+          <div className="flex gap-2">
+            {isAlreadyCollected && !isAlreadyMinted && (
+              <span className="bg-gradient-to-r from-blue-500 to-blue-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                IN COLLECTION
+              </span>
+            )}
+            {isAlreadyMinted && (
+              <span className="bg-gradient-to-r from-green-500 to-emerald-600 text-white text-xs font-bold px-2 py-1 rounded-full">
+                MINTED
+              </span>
+            )}
+          </div>
+        </div>
       </div>
+
+      {/* Status Information Panel */}
+      {(isAlreadyCollected || isAlreadyMinted) && (
+        <div className="bg-gradient-to-r from-blue-50 to-gray-50 border border-gray-200 rounded-lg p-4">
+          <h4 className="font-bold text-gray-800 mb-2">Asset Status</h4>
+          <div className="space-y-2">
+            {isAlreadyCollected && (
+              <div className="flex items-center gap-2 text-blue-700">
+                <Package size={16} />
+                <span className="text-sm">Added to your collection</span>
+              </div>
+            )}
+            {isAlreadyMinted && (
+              <div className="flex items-center gap-2 text-green-700">
+                <Check size={16} />
+                <span className="text-sm">Minted as NFT</span>
+                {tokenId && (
+                  <span className="text-xs font-mono bg-gray-100 px-2 py-1 rounded">
+                    Token #{tokenId}
+                  </span>
+                )}
+              </div>
+            )}
+            {mintedTxHash && (
+              <div className="text-xs text-gray-600 font-mono break-all">
+                TX: {mintedTxHash.slice(0, 20)}...{mintedTxHash.slice(-20)}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Stats Grid */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
@@ -187,8 +266,8 @@ export const AssetDetails: React.FC<AssetDetailsProps> = ({
 
       {/* Action Buttons */}
       <div className="space-y-4">
-        {/* Add to Collection Button - only show if NOT already collected */}
-        {onAddToCollection && !isAlreadyCollected && (
+        {/* Add to Collection Button - only show if NOT already collected or minted */}
+        {onAddToCollection && !isAlreadyCollected && !isAlreadyMinted && (
           <Button 
             onClick={onAddToCollection}
             loading={isAddingToCollection}
@@ -201,26 +280,57 @@ export const AssetDetails: React.FC<AssetDetailsProps> = ({
         )}
 
         {/* Show "Already Collected" message if applicable */}
-        {isAlreadyCollected && (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+        {isAlreadyCollected && !isAlreadyMinted && (
+          <div className="p-4 bg-gradient-to-r from-blue-50 to-blue-100 border border-blue-200 rounded-lg">
             <div className="flex items-center justify-center gap-2">
-              <Check className="w-5 h-5 text-green-600" />
-              <p className="text-green-800 font-medium">Already in your collection</p>
+              <Check className="w-5 h-5 text-blue-600" />
+              <p className="text-blue-800 font-medium">✓ Already in your collection</p>
             </div>
+            <p className="text-blue-700 text-sm text-center mt-1">
+              Ready to mint as an NFT!
+            </p>
           </div>
         )}
 
-        {/* Mint Button */}
-        <Button 
-          variant="accent" 
-          onClick={handleMint}
-          loading={isMinting}
-          disabled={!address || isMinting}
-          className="w-full"
-          icon={Plus}
-        >
-          {isMinting ? 'Minting...' : isConfirmed ? 'Minted!' : 'Mint Discovery Card'}
-        </Button>
+        {/* Show "Already Minted" message */}
+        {isAlreadyMinted && (
+          <div className="p-4 bg-gradient-to-r from-green-50 to-green-100 border border-green-200 rounded-lg">
+            <div className="flex items-center justify-center gap-2">
+              <Crown className="w-5 h-5 text-green-600" />
+              <p className="text-green-800 font-medium">✓ Already minted as NFT</p>
+            </div>
+            <p className="text-green-700 text-sm text-center mt-1">
+              Check your Dex collection to view this NFT
+            </p>
+            {tokenId && (
+              <div className="mt-2 text-center">
+                <a 
+                  href={`#dex`} 
+                  className="text-sm text-primary hover:underline"
+                  onClick={() => window.location.hash = '#dex'}
+                >
+                  View in Dex →
+                </a>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Mint Button - only show if NOT already minted */}
+        {!isAlreadyMinted && (
+          <Button 
+            variant="accent" 
+            onClick={handleMint}
+            loading={isMinting}
+            disabled={!address || isMinting || isAlreadyMinted}
+            className="w-full"
+            icon={isAlreadyMinted ? Check : Plus}
+          >
+            {isMinting ? 'Minting...' : 
+             isConfirmed ? 'Minted!' : 
+             isAlreadyMinted ? 'Already Minted' : 'Mint Discovery Card'}
+          </Button>
+        )}
 
         {/* Back Button */}
         <Button variant="secondary" onClick={onBack} className="w-full">
@@ -235,7 +345,7 @@ export const AssetDetails: React.FC<AssetDetailsProps> = ({
         </div>
       )}
 
-      {isConfirmed && (
+      {isConfirmed && !isAlreadyMinted && (
         <div className="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded">
           Successfully minted discovery card! Check your collection.
         </div>
