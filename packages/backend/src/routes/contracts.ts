@@ -139,6 +139,50 @@ router.get('/discovery-card/:tokenId', async (req, res) => {
   }
 });
 
+router.get('/get-assets', async (req, res) => {
+  try {
+    const totalDiscoveries = await contractService.getTotalDiscoveries();
+    console.log('Total discoveries in contract:', totalDiscoveries.toString());
+    
+    const discoveries = [];
+    const total = Number(totalDiscoveries);
+    
+    for (let i = 0; i < total; i++) {
+      try {
+        const card = await contractService.getDiscoveryCard(BigInt(i));
+        
+        const serializedCard = {
+          tokenId: card.tokenId.toString(),
+          discoverer: card.discoverer,
+          discoveryTimestamp: card.discoveryTimestamp.toString(),
+          assetType: card.assetType,
+          rarity: card.rarity,
+          risk: card.risk,
+          rarityScore: card.rarityScore.toString(),
+          predictionScore: card.predictionScore.toString(),
+          assetAddress: card.assetAddress,
+          assetName: card.assetName,
+          assetSymbol: card.assetSymbol,
+          currentValue: card.currentValue.toString(),
+          yieldRate: card.yieldRate.toString()
+        };
+        discoveries.push(serializedCard);
+      } catch (error) {
+        console.warn(`Failed to fetch discovery card ${i}:`, error);
+        break; // Stop if we hit an error
+      }
+    }
+    
+    res.json(discoveries);
+  } catch (error) {
+    console.error('Get assets error:', error);
+    res.status(500).json({ 
+      error: 'Failed to get contract assets',
+      details: error instanceof Error ? error.message : 'Unknown error'
+    });
+  }
+});
+
 router.get('/user/:address/cards', async (req, res) => {
   try {
     const { address } = req.params;
