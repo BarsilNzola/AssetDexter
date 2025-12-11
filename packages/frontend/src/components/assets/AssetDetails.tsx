@@ -3,7 +3,7 @@ import { RWA, RWAAnalysis, RarityTier, RiskTier } from '../../../../shared/src/t
 import { Button } from '../ui/Button';
 import { useMint } from '../../hooks/useMint';
 import { useAccount } from 'wagmi';
-import { Users, DollarSign, TrendingUp, Shield, Plus, Package } from 'lucide-react';
+import { Users, DollarSign, TrendingUp, Shield, Plus, Package, Check } from 'lucide-react';
 
 interface AssetDetailsProps {
   asset: RWA;
@@ -11,6 +11,7 @@ interface AssetDetailsProps {
   onMintSuccess: () => void;
   onBack: () => void;
   onAddToCollection?: () => void;
+  isAlreadyCollected?: boolean;
   isAddingToCollection?: boolean;
 }
 
@@ -77,6 +78,7 @@ export const AssetDetails: React.FC<AssetDetailsProps> = ({
   onMintSuccess,
   onBack,
   onAddToCollection,
+  isAlreadyCollected = false,
   isAddingToCollection = false,
 }) => {
   const { address } = useAccount();
@@ -185,8 +187,8 @@ export const AssetDetails: React.FC<AssetDetailsProps> = ({
 
       {/* Action Buttons */}
       <div className="space-y-4">
-        {/* Add to Collection Button (only show if onAddToCollection is provided) */}
-        {onAddToCollection && (
+        {/* Add to Collection Button - only show if NOT already collected */}
+        {onAddToCollection && !isAlreadyCollected && (
           <Button 
             onClick={onAddToCollection}
             loading={isAddingToCollection}
@@ -196,6 +198,16 @@ export const AssetDetails: React.FC<AssetDetailsProps> = ({
           >
             {isAddingToCollection ? 'Adding to Collection...' : 'Add to Collection'}
           </Button>
+        )}
+
+        {/* Show "Already Collected" message if applicable */}
+        {isAlreadyCollected && (
+          <div className="p-4 bg-green-50 border border-green-200 rounded-lg">
+            <div className="flex items-center justify-center gap-2">
+              <Check className="w-5 h-5 text-green-600" />
+              <p className="text-green-800 font-medium">Already in your collection</p>
+            </div>
+          </div>
         )}
 
         {/* Mint Button */}

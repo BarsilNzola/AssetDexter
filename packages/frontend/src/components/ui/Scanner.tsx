@@ -72,7 +72,8 @@ export const Scanner: React.FC<ScannerProps> = ({
             const scanResult = await response.json();
             const assetWithTokenInfo = {
               ...scanResult,
-              tokenInfo: token
+              tokenInfo: token,
+              scannedAt: new Date().toISOString()
             };
             
             allAssets.push(assetWithTokenInfo);
@@ -100,7 +101,7 @@ export const Scanner: React.FC<ScannerProps> = ({
         onScanComplete(allAssets);
         setIsScanning(false);
         setProgress(0);
-      }, 500);
+      }, 1000);
       
     } catch (error) {
       console.error('Scan failed:', error);
