@@ -48,11 +48,11 @@ export const useDiscovery = () => {
   useEffect(() => {
     const fetchExistingAssets = async () => {
       try {
-        const response = await fetch('/api/contracts/get-assets');
+        const response = await fetch('/api/contracts/debug-contract');
         if (response.ok) {
           const data = await response.json();
-          setExistingAssets(data);
-          console.log(`Loaded ${data.length} existing assets from contract`);
+          setExistingAssets(data.discoveries || []);
+          console.log(`Loaded ${data.discoveries?.length || 0} existing assets from contract`);
         }
       } catch (error) {
         console.error('Failed to fetch existing assets:', error);

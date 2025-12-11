@@ -9,7 +9,15 @@ import RWADiscoveryCardABI from '../../../../contracts/artifacts/contracts/RWADi
 
 export const DiscoveryForm: React.FC = () => {
   const [assetAddress, setAssetAddress] = useState('');
-  const [discoveryProgress, setDiscoveryProgress] = useState<{current: number; total: number; status: string} | null>(null);
+  const [batchNumber, setBatchNumber] = useState(1); // Track which batch we're on
+  const [batchSize, setBatchSize] = useState(10); // Default batch size
+  const [discoveryProgress, setDiscoveryProgress] = useState<{
+    current: number; 
+    total: number; 
+    status: string;
+    batch?: number;
+    totalBatches?: number;
+  } | null>(null);
   
   const { address, chain } = useAccount();
   const { switchChain } = useSwitchChain();
@@ -25,6 +33,7 @@ export const DiscoveryForm: React.FC = () => {
     discoverAsset, 
     discoverFromSources, 
     saveDiscoveredAssets,
+    discoverAllAssetsInBatches, // New function!
     isPending, 
     isConfirming, 
     isConfirmed, 
@@ -82,6 +91,7 @@ export const DiscoveryForm: React.FC = () => {
     return `data:application/json;base64,${Buffer.from(jsonString).toString('base64')}`;
   };
 
+  // Single asset discovery remains the same...
   const handleSingleDiscover = async () => {
     if (!isCorrectNetwork) {
       alert('Please switch to Linea Sepolia network first');
@@ -144,6 +154,7 @@ export const DiscoveryForm: React.FC = () => {
     }
   };
 
+  // NEW: Handle batch discovery with duplicate checking
   const handleBatchDiscover = async () => {
     if (!isCorrectNetwork) {
       alert('Please switch to Linea Sepolia network first');
@@ -156,29 +167,44 @@ export const DiscoveryForm: React.FC = () => {
       return;
     }
 
-    setDiscoveryProgress({ current: 0, total: 0, status: 'discovering' });
+    setDiscoveryProgress({ 
+      current: 0, 
+      total: 0, 
+      status: 'discovering',
+      batch: batchNumber
+    });
     
     try {
-      const result = await discoverFromSources();
+      // Use the new discoverFromSources with batch parameters and duplicate checking
+      const result = await discoverFromSources({
+        batchSize,
+        batchNumber,
+        skipExisting: true  // This skips already added assets!
+      });
       
-      // Processing up to 5 assets
-      const assetsToProcess = result.assets.slice(0, 5);
+      console.log(`Found ${result.valid} new assets in batch ${batchNumber}`);
+      
+      if (result.valid === 0) {
+        alert('No new assets found to discover. All assets in this batch may already be in the contract.');
+        setDiscoveryProgress(null);
+        setBatchNumber(batchNumber + 1); // Move to next batch
+        return;
+      }
+
+      // Process the assets we found
+      const assetsToProcess = result.assets;
       
       setDiscoveryProgress({
         current: assetsToProcess.length,
         total: assetsToProcess.length,
-        status: 'prepared'
+        status: 'prepared',
+        batch: batchNumber
       });
 
-      if (assetsToProcess.length === 0) {
-        alert('No valid assets found to discover');
-        setDiscoveryProgress(null);
-        return;
-      }
-
       const shouldProceed = window.confirm(
-        `Ready to discover ${assetsToProcess.length} assets?\n\n` +
-        `This will create ${assetsToProcess.length} transactions. Confirm to proceed.`
+        `Ready to discover ${assetsToProcess.length} new assets (Batch ${batchNumber})?\n\n` +
+        `This will create ${assetsToProcess.length} transactions.\n` +
+        `Assets already in contract will be skipped.\n\nConfirm to proceed.`
       );
 
       if (!shouldProceed) {
@@ -189,22 +215,84 @@ export const DiscoveryForm: React.FC = () => {
       setDiscoveryProgress({
         current: 0,
         total: assetsToProcess.length,
-        status: 'processing'
+        status: 'processing',
+        batch: batchNumber
       });
 
-      const saveResult = await saveDiscoveredAssets(assetsToProcess);
+      // Save with progress updates
+      const saveResult = await saveDiscoveredAssets(assetsToProcess, {
+        delayBetweenTx: 3000,
+        onProgress: (progress) => {
+          setDiscoveryProgress(prev => prev ? {
+            ...prev,
+            current: progress.saved
+          } : null);
+        }
+      });
 
       setDiscoveryProgress(null);
       
+      // Update batch number for next time
+      setBatchNumber(batchNumber + 1);
+      
       if (saveResult.saved > 0) {
-        alert(`Successfully discovered ${saveResult.saved} assets!${saveResult.failed > 0 ? ` ${saveResult.failed} failed.` : ''}`);
+        alert(`✅ Successfully discovered ${saveResult.saved} new assets in Batch ${batchNumber}!`);
       } else {
-        alert('No assets were successfully discovered. Check console for errors.');
+        alert('❌ No assets were successfully discovered. Check console for errors.');
       }
       
     } catch (err) {
       console.error('Batch discovery failed:', err);
       alert('Discovery failed. Check console for details.');
+      setDiscoveryProgress(null);
+    }
+  };
+
+  // NEW: Handle discovering ALL remaining assets
+  const handleDiscoverAllRemaining = async () => {
+    if (!isCorrectNetwork) {
+      alert('Please switch to Linea Sepolia network first');
+      await switchToLineaSepolia();
+      return;
+    }
+
+    if (!isOwner) {
+      alert('Only the contract owner can discover assets');
+      return;
+    }
+
+    const confirm = window.confirm(
+      'This will discover ALL remaining assets not yet in the contract.\n\n' +
+      'This may take a while and require many transactions.\n\n' +
+      'Are you sure you want to proceed?'
+    );
+
+    if (!confirm) return;
+
+    try {
+      // Show initial progress
+      setDiscoveryProgress({
+        current: 0,
+        total: 100,
+        status: 'processing-all',
+        batch: 1,
+        totalBatches: 0
+      });
+
+      // Call the new function to process all in batches
+      const result = await discoverAllAssetsInBatches(5, 10000);
+      
+      setDiscoveryProgress(null);
+      
+      alert(`🎉 Discovery complete!\n\n` +
+            `Total saved: ${result.saved}\n` +
+            `Total failed: ${result.failed}\n` +
+            `Total available: ${result.total}\n` +
+            `Already in contract: ${result.total - result.valid}`);
+      
+    } catch (err) {
+      console.error('Failed to discover all assets:', err);
+      alert('Failed to discover all assets. Check console for details.');
       setDiscoveryProgress(null);
     }
   };
@@ -215,8 +303,9 @@ export const DiscoveryForm: React.FC = () => {
     const statusMessages = {
       discovering: 'Discovering assets from data sources...',
       preparing: 'Preparing transaction...',
-      prepared: `Found ${discoveryProgress.current} assets. Ready to process.`,
-      processing: `Confirm transactions in your wallet... (${discoveryProgress.current}/${discoveryProgress.total})`
+      prepared: `Found ${discoveryProgress.current} new assets. Ready to process.`,
+      processing: `Processing Batch ${discoveryProgress.batch}... (${discoveryProgress.current}/${discoveryProgress.total})`,
+      'processing-all': 'Processing all remaining assets in batches...'
     };
 
     return statusMessages[discoveryProgress.status as keyof typeof statusMessages] || 'Processing...';
@@ -268,13 +357,53 @@ export const DiscoveryForm: React.FC = () => {
               Contract Owner - Ready to Discover
             </h3>
             <p className="text-green-700 text-sm mt-1">
-              You can discover up to 5 assets in batch operations.
+              Current batch: {batchNumber} | Batch size: {batchSize}
             </p>
           </div>
         </div>
       )}
 
-      {/* Single Asset Discovery */}
+      {/* Batch Controls */}
+      {isCorrectNetwork && isOwner && (
+        <div className="p-4 bg-gray-50 rounded-lg">
+          <h4 className="font-medium mb-3">Batch Settings</h4>
+          <div className="space-y-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Batch Number
+              </label>
+              <input
+                type="number"
+                min="1"
+                value={batchNumber}
+                onChange={(e) => setBatchNumber(parseInt(e.target.value) || 1)}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Start from 1. Increase after each batch.
+              </p>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                Batch Size
+              </label>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                value={batchSize}
+                onChange={(e) => setBatchSize(parseInt(e.target.value) || 10)}
+                className="w-full p-2 border border-gray-300 rounded-md"
+              />
+              <p className="text-xs text-gray-500 mt-1">
+                Number of assets per batch (1-20 recommended)
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Single Asset Discovery (unchanged) */}
       {isCorrectNetwork && isOwner && (
         <div className="card">
           <h3 className="text-lg font-bold mb-3">Single Asset Discovery</h3>
@@ -282,15 +411,15 @@ export const DiscoveryForm: React.FC = () => {
             Discover a single RWA asset by contract address.
           </p>
           
-          {discoveryProgress && (
+          {discoveryProgress && discoveryProgress.status !== 'processing-all' && (
             <div className="mb-4 p-4 bg-blue-50 rounded-lg">
               <div className="flex justify-between text-sm mb-2">
                 <span>{getStatusMessage()}</span>
-                {discoveryProgress.status === 'processing' && (
+                {(discoveryProgress.status === 'processing' || discoveryProgress.status === 'processing-all') && (
                   <span>{discoveryProgress.current} / {discoveryProgress.total}</span>
                 )}
               </div>
-              {discoveryProgress.status === 'processing' && (
+              {(discoveryProgress.status === 'processing' || discoveryProgress.status === 'processing-all') && (
                 <div className="w-full bg-gray-200 rounded-full h-2">
                   <div 
                     className="bg-green-500 h-2 rounded-full transition-all duration-300"
@@ -327,22 +456,39 @@ export const DiscoveryForm: React.FC = () => {
         </div>
       )}
 
-      {/* Batch Discovery */}
+      {/* Batch Discovery - UPDATED */}
       {isCorrectNetwork && isOwner && (
         <div className="card">
           <h3 className="text-lg font-bold mb-3">Batch Discovery</h3>
           <p className="text-gray-600 mb-4">
-            Discover up to 5 RWA assets from external sources in one operation.
+            Discover new RWA assets in batches. Will skip assets already in contract.
           </p>
           
-          <Button
-            onClick={handleBatchDiscover}
-            loading={isDiscovering}
-            disabled={!!discoveryProgress}
-            className="w-full"
-          >
-            Discover Assets (Up to 5)
-          </Button>
+          <div className="space-y-3">
+            <Button
+              onClick={handleBatchDiscover}
+              loading={isDiscovering}
+              disabled={!!discoveryProgress}
+              className="w-full"
+              variant="primary"
+            >
+              Discover Next Batch ({batchSize} assets)
+            </Button>
+
+            <div className="text-center text-sm text-gray-500">
+              or
+            </div>
+
+            <Button
+              onClick={handleDiscoverAllRemaining}
+              loading={isDiscovering}
+              disabled={!!discoveryProgress}
+              className="w-full"
+              variant="secondary"
+            >
+              Discover All Remaining Assets
+            </Button>
+          </div>
 
           {/* Show results summary */}
           {results.total > 0 && (
@@ -350,9 +496,10 @@ export const DiscoveryForm: React.FC = () => {
               <h4 className="font-medium mb-2">Discovery Results:</h4>
               <div className="text-sm space-y-1">
                 <div>Total scanned: {results.total}</div>
-                <div>Valid assets: {results.valid}</div>
+                <div>New assets found: {results.valid}</div>
                 <div className="text-green-600">Successfully saved: {results.saved}</div>
                 <div className="text-red-600">Failed: {results.failed}</div>
+                <div className="text-blue-600">Current batch: {batchNumber}</div>
               </div>
             </div>
           )}
