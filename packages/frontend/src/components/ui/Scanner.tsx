@@ -46,9 +46,14 @@ export const Scanner: React.FC<ScannerProps> = ({
       
       const allAssets: any[] = [];
       
-      // Scan discovered addresses with individual delays
+      // IMPORTANT: Create a local copy for progress tracking
+      let scannedCount = 0;
+      
+      // Scan discovered addresses ONE BY ONE with real-time updates
       for (let i = 0; i < discoveredAssets.length; i++) {
         const token = discoveredAssets[i];
+        
+        // Update progress BEFORE scanning this asset
         const currentProgress = Math.round((i / discoveredAssets.length) * 100);
         setProgress(currentProgress);
         
@@ -57,9 +62,9 @@ export const Scanner: React.FC<ScannerProps> = ({
             contractAddress: token.address,
             chainId: token.chainId
           };
-
+  
           console.log(`Scanning ${token.name} at ${token.address} on chain ${token.chainId}`);
-
+  
           const response = await fetch(API_ENDPOINTS.SCAN, {
             method: 'POST',
             headers: {
@@ -77,9 +82,11 @@ export const Scanner: React.FC<ScannerProps> = ({
             };
             
             allAssets.push(assetWithTokenInfo);
+            scannedCount++;
             
-            // Notify parent of individual asset found
+            // CRITICAL: Send EACH asset to parent AS SOON as it's scanned
             if (onAssetFound) {
+              console.log(`Sending asset ${i+1}/${discoveredAssets.length} to frontend:`, token.name);
               onAssetFound(assetWithTokenInfo);
             }
             
@@ -91,17 +98,26 @@ export const Scanner: React.FC<ScannerProps> = ({
           console.error(`Failed to scan ${token.name}:`, error);
         }
         
-        // Small delay between scanning each asset to simulate real-time finding
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // Update progress after this asset
+        const progressAfter = Math.round(((i + 1) / discoveredAssets.length) * 100);
+        setProgress(progressAfter);
+        
+        // Small delay to make it visible to users (optional)
+        if (i < discoveredAssets.length - 1) {
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
       }
       
+      // Final progress update
       setProgress(100);
       
+      // Send final completion with all assets
       setTimeout(() => {
+        console.log(`Scan complete. Total assets: ${allAssets.length}`);
         onScanComplete(allAssets);
         setIsScanning(false);
         setProgress(0);
-      }, 1000);
+      }, 500);
       
     } catch (error) {
       console.error('Scan failed:', error);

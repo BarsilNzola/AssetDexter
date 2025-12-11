@@ -120,7 +120,7 @@ export const Home: React.FC = () => {
 
   // Handle individual asset found in real-time
   const handleAssetFound = (asset: ScannedAsset) => {
-    console.log('Asset found in real-time:', asset);
+    console.log('REAL-TIME: Asset found:', asset.tokenInfo?.name);
     
     setScannedAssets(prev => {
       // Check if asset already exists
@@ -129,11 +129,13 @@ export const Home: React.FC = () => {
         a.tokenInfo?.address === asset.tokenInfo?.address
       );
       if (!exists) {
+        console.log(`Adding asset ${prev.length + 1} to display:`, asset.tokenInfo?.name);
         return [...prev, asset];
       }
       return prev;
     });
     
+    // Update progress counter
     setScanProgress(prev => ({
       ...prev,
       foundCount: prev.foundCount + 1,
