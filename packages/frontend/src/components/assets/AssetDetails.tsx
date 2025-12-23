@@ -22,7 +22,6 @@ interface AssetDetailsProps {
   onAddToCollection?: () => void;
   isAlreadyCollected?: boolean;
   isAddingToCollection?: boolean;
-  // NEW: Minting status
   isAlreadyMinted?: boolean;
   tokenId?: string;
   mintedTxHash?: string;

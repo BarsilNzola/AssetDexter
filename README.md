@@ -1,9 +1,9 @@
-AssetDexter - Pokémon-Inspired RWA Discovery Game
+AssetDexter - RWA Discovery Game
 =================================================
 What is AssetDexter?
 --------------------
 
-AssetDexter transforms **Real World Asset (RWA) discovery** into an engaging Pokémon-style game. Hunt, analyze, and collect tokenized assets like treasuries, real estate, art, and luxury goods through an AI-powered "Pokédex" interface.
+AssetDexter transforms **Real World Asset (RWA) discovery** into an engaging game. Hunt, analyze, and collect tokenized assets like treasuries, real estate, art, and luxury goods through an AI-powered "Pokédex" interface.
 
 ### Core Concept
 
@@ -32,11 +32,11 @@ assetdexter/
 Smart Contracts
 -------------------------------
 
-### **Live on Linea Sepolia**
+### **Live on Mantle Sepolia**
 
--   **RWADiscoveryCard**: [`0x6c49D2b8d7B200777F819d3aC5cb740D68b5E4fA`](https://sepolia.lineascan.build/address/0x6c49D2b8d7B200777F819d3aC5cb740D68b5E4fA)
+-   **RWADiscoveryCard**: [`0x319A206621251f7b2582E5fa8c9E084D1371d09B`]
 
--   **AssetDexterFactory**: [`0x9A0E3e7960e3439F897015772e6EcaE7B632Ad9f`](https://sepolia.lineascan.build/address/0x9A0E3e7960e3439F897015772e6EcaE7B632Ad9f)
+-   **AssetDexterFactory**: [`0xEBBf602115Ccb466B4831777A5C7854dcC7c8283`]
 
 ### **Contract Features**
 
@@ -49,7 +49,7 @@ solidity
 - Leaderboard System with User Scores
 
 // Economics
-- Minting Fee: 0.001 ETH per discovery
+- Minting Fee: 0.001 MNT per discovery
 - Batch Minting: Multiple assets in one transaction
 - Anti-Duplication: Prevents duplicate asset discovery
 
@@ -112,7 +112,7 @@ Tech Stack
 
 ### **Blockchain**
 
--   **Network**: Linea Sepolia (EVM-compatible)
+-   **Network**: Mantle Sepolia (EVM-compatible)
 
 -   **Contracts**: Solidity 0.8.19 + OpenZeppelin
 
@@ -125,8 +125,6 @@ Tech Stack
 -   **Web3**: Wagmi v2 + Viem
 
 -   **Styling**: Tailwind CSS + Framer Motion
-
--   **UI**: Pokémon-inspired design system
 
 ### **Backend** (Planned)
 
@@ -147,7 +145,7 @@ Quick Start
 
 -   Git
 
--   Wallet with Linea Sepolia ETH
+-   Wallet with Mantle Sepolia MNT
 
 ### **1\. Clone & Setup**
 
@@ -172,7 +170,7 @@ bash
 echo "PRIVATE_KEY=your_wallet_private_key" > .env
 
 # Deploy to Linea Sepolia
-npm run deploy:linea
+npm run deploy: mantle
 
 ### **4\. Run Frontend**
 
@@ -188,7 +186,7 @@ Roadmap
 
 -   Smart contract development & testing
 
--   Linea Sepolia deployment
+-   Mantle Sepolia deployment
 
 -   Basic frontend setup
 
@@ -201,8 +199,6 @@ Roadmap
 -   Rarity scoring algorithms
 
 ### **Phase 3: Game Experience**
-
--   Pokémon-style scanner UI
 
 -   AssetDex collection viewer
 

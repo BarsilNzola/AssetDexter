@@ -1,0 +1,8 @@
+{
+  "network": "mantleSepolia",
+  "timestamp": "2025-12-23T15:30:32.581Z",
+  "contracts": {
+    "RWADiscoveryCard": "0x319A206621251f7b2582E5fa8c9E084D1371d09B",
+    "AssetDexterFactory": "0xEBBf602115Ccb466B4831777A5C7854dcC7c8283"
+  }
+}

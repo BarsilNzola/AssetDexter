@@ -33,7 +33,7 @@ export const DiscoveryForm: React.FC = () => {
     discoverAsset, 
     discoverFromSources, 
     saveDiscoveredAssets,
-    discoverAllAssetsInBatches, // New function!
+    discoverAllAssetsInBatches,
     isPending, 
     isConfirming, 
     isConfirmed, 
@@ -47,11 +47,11 @@ export const DiscoveryForm: React.FC = () => {
   // Type-safe ownership check with proper casting
   const ownerAddress = contractOwner as string;
   const isOwner = address && ownerAddress && address.toLowerCase() === ownerAddress.toLowerCase();
-  const isCorrectNetwork = chain?.id === 59141;
+  const isCorrectNetwork = chain?.id === 5003;
 
-  const switchToLineaSepolia = async () => {
+  const switchToMantleSepolia = async () => {
     try {
-      await switchChain({ chainId: 59141 });
+      await switchChain({ chainId: 5003 });
     } catch (error) {
       console.error('Failed to switch network:', error);
     }
@@ -91,11 +91,10 @@ export const DiscoveryForm: React.FC = () => {
     return `data:application/json;base64,${Buffer.from(jsonString).toString('base64')}`;
   };
 
-  // Single asset discovery remains the same...
   const handleSingleDiscover = async () => {
     if (!isCorrectNetwork) {
-      alert('Please switch to Linea Sepolia network first');
-      await switchToLineaSepolia();
+      alert('Please switch to Mantle Sepolia network first');
+      await switchToMantleSepolia();
       return;
     }
 
@@ -154,11 +153,11 @@ export const DiscoveryForm: React.FC = () => {
     }
   };
 
-  // NEW: Handle batch discovery with duplicate checking
+  // Handle batch discovery with duplicate checking
   const handleBatchDiscover = async () => {
     if (!isCorrectNetwork) {
-      alert('Please switch to Linea Sepolia network first');
-      await switchToLineaSepolia();
+      alert('Please switch to Mantle Sepolia network first');
+      await switchToMantleSepolia();
       return;
     }
 
@@ -248,11 +247,11 @@ export const DiscoveryForm: React.FC = () => {
     }
   };
 
-  // NEW: Handle discovering ALL remaining assets
+  // Handle discovering ALL remaining assets
   const handleDiscoverAllRemaining = async () => {
     if (!isCorrectNetwork) {
-      alert('Please switch to Linea Sepolia network first');
-      await switchToLineaSepolia();
+      alert('Please switch to Mantle Sepolia network first');
+      await switchToMantleSepolia();
       return;
     }
 
@@ -320,14 +319,14 @@ export const DiscoveryForm: React.FC = () => {
             <div>
               <h3 className="text-yellow-800 font-medium">Wrong Network</h3>
               <p className="text-yellow-700 text-sm mt-1">
-                Please switch to Linea Sepolia to discover assets.
+                Please switch to Mantle Sepolia to discover assets.
               </p>
             </div>
             <Button
-              onClick={switchToLineaSepolia}
+              onClick={switchToMantleSepolia}
               size="sm"
             >
-              Switch to Linea Sepolia
+              Switch to Mantle Sepolia
             </Button>
           </div>
         </div>

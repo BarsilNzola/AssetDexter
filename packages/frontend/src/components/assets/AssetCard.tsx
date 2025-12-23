@@ -18,7 +18,6 @@ interface AssetCardProps {
     compact?: boolean;
   };
   onClick?: () => void;
-  // NEW: Status props
   status?: 'scanned' | 'in-collection' | 'minted' | 'ready-to-mint';
   showStatusBadge?: boolean;
 }

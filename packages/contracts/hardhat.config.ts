@@ -17,17 +17,17 @@ const config: HardhatUserConfig = {
     },
   },
   networks: {
-    // Linea Sepolia Testnet
+    // Mantle Sepolia Testnet
+    mantleSepolia: {
+      url: process.env.MANTLE_RPC_URL || "https://rpc.sepolia.mantle.xyz",
+      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+      chainId: 5003,
+    },
+    // Linea Sepolia Testnet (keep as backup)
     lineaSepolia: {
       url: "https://linea-sepolia-rpc.publicnode.com",
       accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
       chainId: 59141,
-    },
-    // Base Sepolia (keeping as backup)
-    baseSepolia: {
-      url: "https://sepolia.base.org",
-      accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
-      chainId: 84532,
     },
     // Local development
     localhost: {
@@ -37,8 +37,27 @@ const config: HardhatUserConfig = {
   },
   etherscan: {
     apiKey: {
+      mantleSepolia: process.env.MANTLESCAN_API_KEY || "",
       lineaSepolia: process.env.LINEASCAN_API_KEY || "",
     },
+    customChains: [
+      {
+        network: "mantleSepolia",
+        chainId: 5003,
+        urls: {
+          apiURL: "https://api-sepolia.mantlescan.xyz/api",
+          browserURL: "https://sepolia.mantlescan.xyz"
+        }
+      },
+      {
+        network: "lineaSepolia",
+        chainId: 59141,
+        urls: {
+          apiURL: "https://api-sepolia.lineascan.build/api",
+          browserURL: "https://sepolia.lineascan.build"
+        }
+      }
+    ]
   },
   sourcify: {
     enabled: true

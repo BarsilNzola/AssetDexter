@@ -1,6 +1,6 @@
 import React from 'react';
 import { createConfig, http, WagmiProvider } from 'wagmi';
-import { lineaSepolia } from 'wagmi/chains';
+import { mantleSepoliaTestnet } from 'wagmi/chains';
 import { injected, walletConnect, metaMask } from 'wagmi/connectors';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { getConfig } from '../lib/utils/constants';
@@ -10,7 +10,7 @@ const queryClient = new QueryClient();
 const walletConnectProjectId = getConfig('VITE_WALLETCONNECT_PROJECT_ID');
 
 export const config = createConfig({
-  chains: [lineaSepolia],
+  chains: [mantleSepoliaTestnet],
   connectors: [
     metaMask({
       dappMetadata: {
@@ -28,7 +28,7 @@ export const config = createConfig({
     }),
   ],
   transports: {
-    [lineaSepolia.id]: http('https://linea-sepolia-rpc.publicnode.com'),
+    [mantleSepoliaTestnet.id]: http('https://rpc.sepolia.mantle.xyz'),
   },
 });
 

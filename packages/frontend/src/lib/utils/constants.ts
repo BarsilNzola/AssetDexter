@@ -88,11 +88,11 @@ export const API_ENDPOINTS = {
   HEALTH: `${API_BASE_URL}/health`,
 } as const;
 
-export const RPC_URL = 'https://linea-sepolia-rpc.publicnode.com';
+export const RPC_URL = 'https://rpc.sepolia.mantle.xyz';
 
 export const CONTRACT_ADDRESSES = {
-  DISCOVERY_CARD: '0x6c49D2b8d7B200777F819d3aC5cb740D68b5E4fA', 
-  FACTORY: '0x9A0E3e7960e3439F897015772e6EcaE7B632Ad9f', 
+  DISCOVERY_CARD: '0x319A206621251f7b2582E5fa8c9E084D1371d09B', 
+  FACTORY: '0xEBBf602115Ccb466B4831777A5C7854dcC7c8283', 
 } as const;
 
 export const getDiscoveredAssets = async (): Promise<Array<{address: string, chainId: number, name: string}>> => {
