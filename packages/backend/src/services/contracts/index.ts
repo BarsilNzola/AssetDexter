@@ -45,7 +45,7 @@ export class ContractService {
   private isInitialized: boolean = false;
 
   constructor() {
-    this.provider = new ethers.JsonRpcProvider(config.linea.rpcUrl);
+    this.provider = new ethers.JsonRpcProvider(config.mantle.rpcUrl);
     this.initializeContracts();
   }
 
