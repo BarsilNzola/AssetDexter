@@ -362,7 +362,7 @@ export class DiscoveryService {
   
   async getAllDiscoveredAssets(): Promise<any[]> {
     const discoveryContracts = [
-      { address: '0x6c49D2b8d7B200777F819d3aC5cb740D68b5E4fA', chainId: 59141 },
+      { address: '0x319A206621251f7b2582E5fa8c9E084D1371d09B', chainId: 5003 },
     ];
   
     const allAssets: any[] = [];
