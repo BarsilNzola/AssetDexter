@@ -302,6 +302,7 @@ export class DiscoveryService {
       'Base': 8453,
       'Linea': 59141,
       'Polygon': 137,
+      'Mantle': 5003,
       'Arbitrum': 42161,
       'Solana': 101,
       'Avalanche': 43114
