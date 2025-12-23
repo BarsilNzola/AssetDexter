@@ -1,8 +1,8 @@
 export const config = {
   port: process.env.PORT || 3001,
-  linea: {
-    rpcUrl: process.env.LINEA_RPC_URL || 'https://linea-sepolia-rpc.publicnode.com',
-    chainId: 59141 // Linea Sepolia chain ID
+  mantle: {
+    rpcUrl: process.env.LINEA_RPC_URL || 'https://rpc.sepolia.mantle.xyz',
+    chainId: 5003
   },
   ethereum: {
     rpcUrl: process.env.ETH_RPC_URL || 'https://eth.llamarpc.com', // Public Ethereum RPC
@@ -13,8 +13,8 @@ export const config = {
     chainId: 8453
   },
   contracts: {
-    discoveryCard: process.env.DISCOVERY_CARD_ADDRESS || '0x6c49D2b8d7B200777F819d3aC5cb740D68b5E4fA',
-    factory: process.env.FACTORY_ADDRESS || '0x9A0E3e7960e3439F897015772e6EcaE7B632Ad9f'
+    discoveryCard: process.env.DISCOVERY_CARD_ADDRESS || '0x319A206621251f7b2582E5fa8c9E084D1371d09B',
+    factory: process.env.FACTORY_ADDRESS || '0xEBBf602115Ccb466B4831777A5C7854dcC7c8283'
   },
   apis: {
     defiLlama: 'https://yields.llama.fi/pools',

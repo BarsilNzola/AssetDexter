@@ -66,7 +66,7 @@ router.get('/debug-contract', async (req, res) => {
     res.json({
       totalDiscoveries: totalDiscoveries.toString(),
       discoveries,
-      contractAddress: '0x6c49D2b8d7B200777F819d3aC5cb740D68b5E4fA'
+      contractAddress: '0x319A206621251f7b2582E5fa8c9E084D1371d09B'
     });
   } catch (error) {
     console.error('Contract debug error:', error);
