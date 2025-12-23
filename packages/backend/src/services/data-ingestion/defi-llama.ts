@@ -26,6 +26,7 @@ export class DeFiLlamaService {
           'Base', 
           'Linea',
           'Solana',
+          'Mantle',
           'Avalanche',
           'Polygon',
           'Arbitrum'
