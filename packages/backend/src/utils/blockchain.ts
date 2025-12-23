@@ -17,7 +17,7 @@ export class BlockchainService {
     const networks = [
       { chainId: 1, rpcUrl: config.ethereum.rpcUrl },
       { chainId: 8453, rpcUrl: config.base.rpcUrl },
-      { chainId: 59141, rpcUrl: config.mantle.rpcUrl }
+      { chainId: 5003, rpcUrl: config.mantle.rpcUrl }
     ];
 
     networks.forEach(network => {
